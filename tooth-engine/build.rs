@@ -24,11 +24,6 @@ fn main() {
     let dest_path = Path::new(&out_dir).join("gfx.rs");
     let bin_path = Path::new(&out_dir).join("gfx.bin");
     let mut f = File::create(&dest_path).unwrap();
-    let dune_bg = image::open("assets/bg/dune.png").unwrap().into_rgba();
-    compress_bg(&mut f, "DUNE_BG", dune_bg);
-    let dune_fg = image::open("assets/fg/dune.png").unwrap().into_rgba();
-    compress_fg(&mut f, "DUNE_FG", dune_fg);
-
 
     let mut data = vec![];
     let mut pal = vec![];
@@ -38,13 +33,13 @@ fn main() {
     let dune_fg = image::open("assets/fg/dune.png").unwrap().into_rgba();
     embed_fg(&dune_fg, &mut data, &mut pal).write(&mut f, "DUNE_FG");
 
-    std::fs::write(bin_path, &data);
-    std::fs::write("test.bin", &data);
-
     let comp = lz4::block::compress(&data, lz4::block::CompressionMode::HIGHCOMPRESSION(12).into(), false).unwrap();
-    eprintln!("{} => {}", data.len(), comp.len());
 
-    writeln!(f, r#"pub static GFX_DATA: [u8; {}] = *include_bytes!(concat!(env!("OUT_DIR"), "/gfx.bin"));"#, data.len());
+    std::fs::write(bin_path, &comp);
+    std::fs::write("test.bin", &comp);
+
+    writeln!(f, r#"pub static mut GFX_DATA: [u8; {0:}] = [0; {0:}];"#, data.len());
+    writeln!(f, r#"pub static GFX_DATA_LZ4: [u8; {}] = *include_bytes!(concat!(env!("OUT_DIR"), "/gfx.bin"));"#, comp.len());
     writeln!(f, "pub static PAL_DATA: [u32; {}] = {:?};", pal.len(), pal);
 
     //panic!();

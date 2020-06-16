@@ -2,6 +2,7 @@
 
 use crate::framebuffer::Framebuffer;
 use crate::controller::Buttons;
+use crate::graphics;
 
 pub mod level;
 
@@ -13,6 +14,7 @@ pub enum GameState {
 
 impl GameState {
     pub fn new() -> Self {
+        graphics::init();
         GameState::Level(level::State::new())
     }
     pub fn run(&mut self, fb: &mut Framebuffer, buttons: Buttons) {
