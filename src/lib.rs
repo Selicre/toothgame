@@ -1,12 +1,6 @@
 #![no_std]
 
-pub mod framebuffer;
-pub mod vec2;
-pub mod controller;
-pub mod graphics;
-pub mod foreground;
-pub mod terrain;
-pub mod state;
+use tooth_engine::{*, framebuffer::Framebuffer};
 
 #[panic_handler]
 unsafe fn handle_panic(_: &core::panic::PanicInfo) -> ! {
@@ -15,8 +9,11 @@ unsafe fn handle_panic(_: &core::panic::PanicInfo) -> ! {
 }
 
 #[no_mangle]
+pub static mut BUF: Framebuffer = Framebuffer::new();
+
+#[no_mangle]
 pub unsafe fn drw(buttons: u32) {
-    let fb = &mut framebuffer::BUF;
+    let fb = &mut BUF;
     let buttons = controller::Buttons(buttons);
     state::get().run(fb, buttons);
 }

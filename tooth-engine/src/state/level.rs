@@ -19,16 +19,12 @@ impl State {
     pub fn new() -> Self {
         use crate::graphics;
         let mut background = Background::new();
-        background.unpack_gfx(0);
         let mut foreground = Foreground::new();
-        foreground.unpack_gfx(0);
         terrain::decode_chunk(vec2(0, 0), foreground.blocks_mut(), &[0x00, 0x3C, 0x01, 0xA7, 0x51, 0x01, 0xA5, 0x52]);
-        //*foreground.map_entry(vec2(0, 0)) = 0;
-        //*foreground.map_entry(vec2(0, 1)) = 0x32 | 0x80;
         State {
             bg_pos: vec2(0,-60),
             fg_pos: vec2(0,0),
-            level_size: vec2(768, 256),
+            level_size: vec2(2048, 1024),
             foreground,
             background
         }
@@ -42,7 +38,7 @@ impl State {
         self.fg_pos = self.fg_pos.map(|c| c.max(0));
         self.fg_pos.x = self.fg_pos.x.min(self.level_size.x - 320);
         self.fg_pos.y = self.fg_pos.y.min(self.level_size.y - 180);
-        self.bg_pos = (self.fg_pos - vec2(0, 120)) / 2;
+        self.bg_pos = vec2(self.fg_pos.x / 4, -52);
         self.background.render(self.bg_pos, fb);
         self.foreground.render(self.fg_pos, fb);
         None
