@@ -8,6 +8,7 @@ pub struct Player {
     data: EntityData,
     anim_timer: i32,
     p_meter: i32,
+    p_speed: bool,
     debug_sensors: [Vec2<i32>; 5]
 }
 
@@ -19,6 +20,7 @@ impl Player {
             data: EntityData::new(),
             anim_timer: 0,
             p_meter: 0,
+            p_speed: false,
             debug_sensors: [vec2(0,0); 5]
         }
     }
@@ -50,23 +52,26 @@ impl Player {
                 data.vel.y = 0;
             }
         }
+        let max_speed = if self.p_meter == 0x70 { 0x300 } else { 0x240 };
         if buttons.left() {
             data.hflip = true;
-            if data.vel.x > 0 {
-                data.vel.x = (data.vel.x - 0x50).max(-0x240);
+            if data.vel.x >= 0 {
+                data.vel.x = (data.vel.x - 0x50).max(-max_speed);
             } else {
-                data.vel.x = (data.vel.x - 0x18).max(-0x240);
-                self.p_meter += 2;
+                data.vel.x = (data.vel.x - 0x18).max(-max_speed);
+                if data.on_ground || self.p_speed { self.p_meter += 3; }
             }
         } else if buttons.right() {
             data.hflip = false;
             if data.vel.x > 0 {
-                data.vel.x = (data.vel.x + 0x18).min(0x240);
-                self.p_meter += 2;
+                data.vel.x = (data.vel.x + 0x18).min(max_speed);
+                if data.on_ground || self.p_speed { self.p_meter += 3; }
             } else {
-                data.vel.x = (data.vel.x + 0x50).min(0x240);
+                data.vel.x = (data.vel.x + 0x50).min(max_speed);
             }
         } else if data.on_ground {
+            // if on ground and not pressing any buttons..
+            self.p_speed = false;
             if data.vel.x > 0 {
                 data.vel.x -= 0x10;
                 if data.vel.x < 0 { data.vel.x = 0; }
@@ -75,6 +80,9 @@ impl Player {
                 if data.vel.x > 0 { data.vel.x = 0; }
             }
         }
+        self.p_meter -= 1;
+        if self.p_meter > 0x70 { self.p_speed = true; self.p_meter = 0x70; }
+        if self.p_meter < 0 { self.p_meter = 0; }
         if data.on_ground {
             self.anim_timer += data.vel.x.abs();
             if self.anim_timer > 0xA00 {
@@ -103,6 +111,7 @@ impl Player {
             let sensor_mid = foreground.solidity_at(sensor_mid_loc / 16);
             let sensor_bot = foreground.solidity_at(sensor_bot_loc / 16);
             if !(sensor_top == 0 && sensor_mid == 0 && sensor_bot == 0) {
+                self.p_speed = false;
                 data.vel.x = 0;
                 next_pos.x = (sensor_top_loc.x * 256 & 0x7FFFF000) + (-1 - Self::HITBOX.x / 2) * 256
             }
@@ -118,6 +127,7 @@ impl Player {
             let sensor_mid = foreground.solidity_at(sensor_mid_loc / 16);
             let sensor_bot = foreground.solidity_at(sensor_bot_loc / 16);
             if !(sensor_top == 0 && sensor_mid == 0 && sensor_bot == 0) {
+                self.p_speed = false;
                 data.vel.x = 0;
                 next_pos.x = (sensor_top_loc.x * 256 & 0x7FFFF000) + (16 + Self::HITBOX.x / 2) * 256
             }
@@ -172,6 +182,11 @@ impl Player {
                     if p != 0 { *px = p; }
                 }
             }
+        }
+        let color = if self.p_speed { 0xFF0000FF } else { 0xFFFFFFFF };
+        for i in 0..self.p_meter {
+            into.pixel(vec2(16 + i, 16)).map(|c| *c = color);
+            into.pixel(vec2(16 + i, 17)).map(|c| *c = color);
         }
         /*
         into.pixel(self.data.pos / 256 - camera).map(|c| *c = 0xFF0000FF);

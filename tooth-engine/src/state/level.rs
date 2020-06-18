@@ -14,6 +14,7 @@ pub struct State {
     foreground: Foreground,
     background: Background,
     entity_set: EntitySet,
+    fadein_timer: i32,
 }
 
 impl State {
@@ -37,7 +38,8 @@ impl State {
             level_size: vec2(2048, 256),
             foreground,
             background,
-            entity_set
+            entity_set,
+            fadein_timer: 0
         }
     }
     pub fn run(&mut self, fb: &mut Framebuffer, buttons: Buttons) -> Option<GameState> {
@@ -69,6 +71,17 @@ impl State {
         self.background.render(self.camera, fb);
         self.foreground.render(self.camera, fb);
         self.entity_set.render(self.camera, fb);
+
+        if self.fadein_timer < 320 {
+            self.fadein_timer += 8;
+            let center = self.entity_set.player.pos() - self.camera - vec2(0, 24);
+            for (pos,px) in fb.pixels() {
+                let dist = pos - center;
+                if dist.x*dist.x + dist.y*dist.y > self.fadein_timer*self.fadein_timer {
+                    *px = 0xFF000000;
+                }
+            }
+        }
         None
     }
 }
