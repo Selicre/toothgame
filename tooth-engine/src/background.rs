@@ -15,13 +15,13 @@ impl Background {
         use crate::graphics;
         let data = graphics::DUNE_BG.get_data();
         let pal = graphics::DUNE_BG.get_pal();
+        let camera = vec2(camera.x / 4, -52);
         for (pos,i) in into.pixels() {
             let mut pos = pos + camera;
             if pos.y >= 64 {
-                pos.x += camera.x * ((pos.y - 58) / 6) / 3;
+                pos.x += camera.x * ((pos.y - 58) / 6) / 6;
             }
             pos.x %= 320;
-            let tile_pos = pos / 8;
             if pos.y < 0 {
                 *i = 0xff_b5_9f_e6;
                 continue;

@@ -1,4 +1,3 @@
-use crate::vec2::{Vec2, vec2};
 use crate::lz4;
 
 pub struct DataDef {

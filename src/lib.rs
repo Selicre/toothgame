@@ -11,11 +11,17 @@ unsafe fn handle_panic(_: &core::panic::PanicInfo) -> ! {
 #[no_mangle]
 pub static mut BUF: Framebuffer = Framebuffer::new();
 
+static mut OLD_BUTTONS: u32 = 0;
+
 #[no_mangle]
 pub unsafe fn drw(buttons: u32) {
     let fb = &mut BUF;
-    let buttons = controller::Buttons(buttons);
-    state::get().run(fb, buttons);
+    let b = controller::Buttons {
+        current: buttons,
+        old: OLD_BUTTONS
+    };
+    OLD_BUTTONS = buttons;
+    state::get().run(fb, b);
 }
 
 

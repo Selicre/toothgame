@@ -21,6 +21,17 @@ impl Foreground {
     pub fn blocks_mut(&mut self) -> &mut [u8] {
         &mut self.blocks
     }
+    pub fn block_at(&mut self, mut at: Vec2<i32>) -> &mut u8 {
+        at.x = at.x.max(0).min(256);
+        at.y = at.y.max(0).min(256);
+        &mut self.blocks[at.y as usize * 256 + at.x as usize]
+    }
+    pub fn solidity_at(&self, mut at: Vec2<i32>) -> u8 {
+        at.x = at.x.max(0).min(256);
+        at.y = at.y.max(0).min(256);
+        let c = self.blocks[at.y as usize * 256 + at.x as usize];
+        if c == 0 || c == 2 { 0 } else { 1 }
+    }
     pub fn render(&self, camera: Vec2<i32>, into: &mut Framebuffer) {
         use crate::graphics;
         let pal = graphics::DUNE_FG.get_pal();

@@ -22,6 +22,13 @@ impl Framebuffer {
             (pos, c)
         })
     }
+    pub fn pixel(&mut self, position: Vec2<i32>) -> Option<&mut u32> {
+        if position.x < 320 && position.y < 180 && position.x >= 0 && position.y >= 0 {
+            Some(&mut self[position.y as usize * Self::WIDTH + position.x as usize])
+        } else {
+            None
+        }
+    }
 }
 
 impl ops::Deref for Framebuffer {

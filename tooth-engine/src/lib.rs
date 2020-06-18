@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 #![no_std]
 
 pub mod framebuffer;
