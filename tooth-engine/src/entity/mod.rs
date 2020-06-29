@@ -21,12 +21,6 @@ pub struct EntityData {
     pub frame: i32
 }
 
-#[derive(Copy, Clone)]
-pub struct Entity {
-    kind: EntityKind,
-    data: EntityData
-}
-
 impl EntityData {
     pub const fn new() -> Self {
         Self {
@@ -39,20 +33,36 @@ impl EntityData {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct Entity {
+    kind: EntityKind,
+    data: EntityData
+}
+
+impl Entity {
+    pub fn run(&mut self, list: &[Option<Entity>], foreground: &mut Foreground) {
+
+    }
+}
+
 pub struct EntitySet {
-    pub data: [Option<Entity>; 64],
+    pub list: [Option<Entity>; 64],
     pub player: player::Player
 }
 
 impl EntitySet {
     pub fn new() -> Self {
         EntitySet {
-            data: [None; 64],
+            list: [None; 64],
             player: player::Player::new()
         }
     }
     pub fn run(&mut self, buttons: Buttons, foreground: &mut Foreground) {
-        self.player.run(buttons, &self.data, foreground);
+        let list_copy = self.list;
+        for i in self.list.iter_mut().filter_map(|c| c.as_mut()) {
+            i.run(&list_copy, foreground);
+        }
+        self.player.run(buttons, &self.list, foreground);
     }
     pub fn render(&self, camera: Vec2<i32>, into: &mut Framebuffer) {
         self.player.render(camera, into);

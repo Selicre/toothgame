@@ -21,16 +21,37 @@ impl Foreground {
     pub fn blocks_mut(&mut self) -> &mut [u8] {
         &mut self.blocks
     }
-    pub fn block_at(&mut self, mut at: Vec2<i32>) -> &mut u8 {
+    pub fn block_at_mut(&mut self, mut at: Vec2<i32>) -> &mut u8 {
         at.x = at.x.max(0).min(256);
         at.y = at.y.max(0).min(256);
         &mut self.blocks[at.y as usize * 256 + at.x as usize]
     }
-    pub fn solidity_at(&self, mut at: Vec2<i32>) -> u8 {
+    pub fn block_at(&self, mut at: Vec2<i32>) -> u8 {
         at.x = at.x.max(0).min(256);
         at.y = at.y.max(0).min(256);
-        let c = self.blocks[at.y as usize * 256 + at.x as usize];
-        if c == 0 || c == 2 { 0 } else { 1 }
+        self.blocks[at.y as usize * 256 + at.x as usize]
+    }
+    pub fn solidity_at(&self, at: Vec2<i32>) -> Solidity {
+        use Solidity::*;
+        let c = self.block_at(at);
+        match c {
+            0x00 => NonSolid,
+            0x02 => Coin,
+            0x04 => Semisolid,
+            0x05 => HurtTop,
+            0x49 => Slab,
+            0x52 => Semisolid,
+            0x46 => SlopeSteep(false),
+            0x47 => SlopeSteep(true),
+            0x56 => SlopeAssist,
+            0x57 => SlopeAssist,
+            0x64 => SlopeLow(false),
+            0x65 => SlopeHigh(false),
+            0x75 => SlopeHigh(true),
+            0x76 => SlopeLow(true),
+            _ => Solid
+        }
+        //if c == 0 { NonSolid } else { Solid }
     }
     pub fn render(&self, camera: Vec2<i32>, into: &mut Framebuffer) {
         use crate::graphics;
@@ -39,14 +60,30 @@ impl Foreground {
         // TODO: copy rows of 16 pixels at a time?
         for (pos,i) in into.pixels() {
             let pos = pos + camera;
-            let block_pos = pos / 16;
+            let block_pos = pos.map(|c| c >> 4);
             let block_offset = pos & 15;
             let offset_addr = (block_offset.x + block_offset.y * 16) as usize;
             let block_addr = (block_pos.x + block_pos.y * 256) as usize;
             let block_id = self.blocks[block_addr];
+            //let block_id = self.block_at(block_pos);
 
             let px = pal[self.fg_block(block_id as usize)[offset_addr] as usize];
             if px != 0 { *i = px; }
         }
     }
 }
+
+#[derive(Copy,Clone,PartialEq,Eq)]
+pub enum Solidity {
+    NonSolid,
+    Solid,
+    Coin,
+    Semisolid,
+    HurtTop,
+    Slab,
+    SlopeHigh(bool),
+    SlopeLow(bool),
+    SlopeSteep(bool),
+    SlopeAssist,
+}
+
