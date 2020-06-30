@@ -106,15 +106,43 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 let x = params >> 4;
                 let params = i.next().unwrap();
                 let height = params & 0x0F;
-                let is_left = params >> 4;
-                buf[x as usize + (y as usize) * 256 + offset] = 0x75;
-                buf[x as usize + 1 + (y as usize) * 256 + offset] = 0x76;
-                for i in 0..height {
-                    for j in 0..3 {
-                        buf[x as usize + (i * 2 + j + 1) as usize + (y as usize + i as usize + 1) * 256 + offset] = 0x74 + j;
+                let is_left = (params >> 4) & 0x01 != 0;
+                let is_filled = (params >> 5) & 0x01 != 0;
+                if is_left {
+                    buf[x as usize + (y as usize) * 256 + offset] = 0x66;
+                    for i in 0..height {
+                        for j in 0..3 {
+                            buf[x as usize + (i * 2 + j) as usize + (y as usize - i as usize - 1) * 256 + offset] = 0x64 + j;
+                        }
+                        if is_filled {
+                            for j in i*2..height*2+1 {
+                                buf[x as usize + (j + 1) as usize + (y as usize - i as usize) * 256 + offset] = 0x62;
+                            }
+                        }
                     }
+                    if is_filled {
+                        buf[x as usize + (height as usize * 2 + 1) + (y as usize - height as usize) * 256 + offset] = 0x62;
+                    }
+                    buf[x as usize + 0 + (height as usize * 2) + (y as usize - height as usize - 1) * 256 + offset] = 0x64;
+                    buf[x as usize + 1 + (height as usize * 2) + (y as usize - height as usize - 1) * 256 + offset] = 0x65;
+                } else {
+                    buf[x as usize + (y as usize) * 256 + offset] = 0x75;
+                    buf[x as usize + 1 + (y as usize) * 256 + offset] = 0x76;
+                    for i in 0..height {
+                        for j in 0..3 {
+                            buf[x as usize + (i * 2 + j + 1) as usize + (y as usize + i as usize + 1) * 256 + offset] = 0x74 + j;
+                        }
+                        if is_filled {
+                            for j in 0..i*2+3 {
+                                buf[x as usize + (j) as usize + (y as usize + i as usize + 2) * 256 + offset] = 0x62;
+                            }
+                        }
+                        if is_filled {
+                            buf[x as usize + (y as usize + 1 as usize) * 256 + offset] = 0x62;
+                        }
+                    }
+                    buf[x as usize + 1 + (height as usize * 2) + (y as usize + height as usize + 1) * 256 + offset] = 0x74;
                 }
-                buf[x as usize + 1 + (height as usize * 2) + (y as usize + height as usize + 1) * 256 + offset] = 0x74;
             },
             6 => {  // land steep slope
                 let params = i.next().unwrap();
@@ -149,9 +177,23 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 let params = i.next().unwrap();
                 let height = params & 0x0F;
                 let width = params >> 4;
-                for rx in 0..=width {
-                    for ry in 0..=height {
+                for ry in 0..=height {
+                    for rx in 0..=width {
                         let block = i.next().unwrap();
+                        buf[x as usize + rx as usize + (y as usize + ry as usize)*256 + offset] = block;
+                    }
+                }
+            },
+            9 => {  // land rectangle
+                let params = i.next().unwrap();
+                let y = params & 0x0F;
+                let x = params >> 4;
+                let params = i.next().unwrap();
+                let height = params & 0x0F;
+                let width = params >> 4;
+                for ry in 0..=height {
+                    for rx in 0..=width {
+                        let block = if ry == 0 { 0x52 } else { 0x62 };
                         buf[x as usize + rx as usize + (y as usize + ry as usize)*256 + offset] = block;
                     }
                 }

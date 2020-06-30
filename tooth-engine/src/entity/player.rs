@@ -11,6 +11,7 @@ pub struct Player {
     p_meter: i32,
     p_speed: bool,
     angle: i32,
+    debug_enabled: bool,
     debug_sensors: [Vec2<i32>; 5],
     debug_lines: [i32;2],
 }
@@ -36,6 +37,7 @@ impl Player {
             p_meter: 0,
             p_speed: false,
             angle: 0,
+            debug_enabled: false,
             debug_sensors: [vec2(0,0); 5],
             debug_lines: [0; 2]
         }
@@ -61,29 +63,67 @@ impl Player {
     pub fn sensor_down(&mut self, sensor_loc: Vec2<i32>, sensor_id: usize, foreground: &mut Foreground) -> Option<i32> {
         use Solidity::*;
         let sensor = self.collide(sensor_loc, foreground);
+        let block_y = (sensor_loc.y * 256 & 0x7FFFF000);
         match sensor {
-            Solid | Semisolid => {
+            Solid => {
                 self.angle = 0;
-                return Some((sensor_loc.y * 256 & 0x7FFFF000) - 1 * 256);
+                return Some(block_y - 1 * 256);
+            }
+            Semisolid if self.data.pos.y <= block_y => {
+                self.angle = 0;
+                return Some(block_y - 1 * 256);
             }
             HurtTop => {
-                self.angle = 0;
                 self.data.vel.y = -2048;
-                return Some((sensor_loc.y * 256 & 0x7FFFF000) - 1 * 256);
+                return Some(block_y - 1 * 256);
             }
             Slab if sensor_loc.y % 16 > 7 => {
-                self.angle = 0;
-                return Some((sensor_loc.y * 256 & 0x7FFFF000) + 7 * 256);
+                return Some(block_y + 7 * 256);
             }
-            SlopeAssist if self.data.vel.x < 0 => {
-                self.angle = 2;
-                return Some((sensor_loc.y * 256 & 0x7FFFF000) - 2 * 256);
+            SlopeAssist { direction: v, steep } if if v { self.data.vel.x < 0 } else { self.data.vel.x > 0 } => {
+                self.angle = if v { 1 } else { -1 } * if steep { 2 } else { 1 };
+                return Some(block_y - 2 * 256);
             }
-            SlopeSteep(v) if sensor_id == 0 => {
+            SlopeSteep(v) if v ^ (sensor_id != 0) => {
                 let inside_tile = sensor_loc % 16;
-                if inside_tile.y >= (inside_tile.x - 1) {
-                    self.angle = 2;
-                    return Some((sensor_loc.y * 256 & 0x7FFFF000) + (inside_tile.x - 1) * 256);
+                if v {
+                    if inside_tile.y >= inside_tile.x - 1 || (self.data.on_ground && self.data.vel.y >= 0) {
+                        self.angle = 2;
+                        return Some(block_y + (inside_tile.x - 1) * 256);
+                    }
+                } else {
+                    if inside_tile.y >= 15 - inside_tile.x || (self.data.on_ground && self.data.vel.y >= 0) {
+                        self.angle = -2;
+                        return Some(block_y + (15 - inside_tile.x) * 256);
+                    }
+                }
+            }
+            SlopeLow(v) if v ^ (sensor_id != 0) => {
+                let inside_tile = sensor_loc % 16;
+                if v {
+                    if inside_tile.y >= inside_tile.x/2 + 7 {
+                        self.angle = 1;
+                        return Some(block_y + (inside_tile.x/2 + 7) * 256);
+                    }
+                } else {
+                    if inside_tile.y >= 14 - inside_tile.x/2 {
+                        self.angle = -1;
+                        return Some(block_y + (14 - inside_tile.x/2) * 256);
+                    }
+                }
+            }
+            SlopeHigh(v) if v ^ (sensor_id != 0) => {
+                let inside_tile = sensor_loc % 16;
+                if v {
+                    if inside_tile.y >= inside_tile.x/2 - 1 {
+                        self.angle = 1;
+                        return Some(block_y + (inside_tile.x/2 - 1) * 256);
+                    }
+                } else {
+                    if inside_tile.y >= 6 - inside_tile.x/2 {
+                        self.angle = -1;
+                        return Some(block_y + (6 - inside_tile.x/2) * 256);
+                    }
                 }
             }
             _ => {}
@@ -125,17 +165,15 @@ impl Player {
     }
     pub fn run(&mut self, buttons: Buttons, data: &[Option<Entity>], foreground: &mut Foreground) {
         let data = &mut self.data;
-        /*if buttons.c_edge() {
-            data.pos.y += 0x1000;
-        }*/
+        self.debug_enabled ^= buttons.c_edge();
         if !data.on_ground {
             if buttons.a() {
                 data.vel.y += 0x30;
             } else {
                 data.vel.y += 0x60;
             }
-
             data.vel.y = data.vel.y.min(1024);
+            self.angle = 0;
         } else {
             if buttons.a_edge() {
                 let lift = 0x500 + ((data.vel.x.abs() / 0x80) * 10 / 4) * 0x10;
@@ -196,26 +234,17 @@ impl Player {
         }
         let mut next_pos = data.pos + data.vel;
         if data.on_ground {
-            if self.angle == 2 {
+            /*if self.angle == 2 {
                 next_pos.y += data.vel.x;
-            }
+            } else if self.angle == -2 {
+                next_pos.y -= data.vel.x;
+            }*/
+            next_pos.y += (data.vel.x/2) * self.angle;
         }
         let next_pos_x = vec2(next_pos.x, data.pos.y);
         if data.vel.x >= 0 {
             use Solidity::*;
             // Collide with right wall
-            /*
-            //self.debug_sensors[2] = sensor_top_loc;
-            //self.debug_sensors[3] = sensor_mid_loc;
-            //self.debug_sensors[4] = sensor_bot_loc;
-            let sensor_top = foreground.solidity_at(sensor_top_loc / 16);
-            let sensor_mid = foreground.solidity_at(sensor_mid_loc / 16);
-            let sensor_bot = foreground.solidity_at(sensor_bot_loc / 16);
-            if sensor_top == Solid || sensor_mid == Solid || sensor_bot == Solid {
-                self.p_speed = false;
-                data.vel.x = 0;
-                next_pos.x = (sensor_top_loc.x * 256 & 0x7FFFF000) + (-1 - Self::HITBOX.x / 2) * 256
-            }*/
             let sensor_locs = [
                 (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y)),
                 (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y / 2)),
@@ -233,21 +262,6 @@ impl Player {
         } else {
             use Solidity::*;
             // Collide with left wall
-            /*let sensor_top_loc = (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y));
-            let sensor_mid_loc = (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y / 2));
-            let sensor_bot_loc = (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, 0));
-            //self.debug_sensors[2] = sensor_top_loc;
-            //self.debug_sensors[3] = sensor_mid_loc;
-            //self.debug_sensors[4] = sensor_bot_loc;
-            let sensor_top = foreground.solidity_at(sensor_top_loc / 16);
-            let sensor_mid = foreground.solidity_at(sensor_mid_loc / 16);
-            let sensor_bot = foreground.solidity_at(sensor_bot_loc / 16);
-            if sensor_top == Solid || sensor_mid == Solid || sensor_bot == Solid {
-                self.p_speed = false;
-                data.vel.x = 0;
-                next_pos.x = (sensor_top_loc.x * 256 & 0x7FFFF000) + (16 + Self::HITBOX.x / 2) * 256
-            }*/
-            //9613
             let sensor_locs = [
                 (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y)),
                 (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y / 2)),
@@ -270,6 +284,7 @@ impl Player {
                 (next_pos_y / 256 + vec2(-Self::HITBOX.x / 2, 1)),
                 (next_pos_y / 256 + vec2( Self::HITBOX.x / 2, 1))
             ];
+            self.debug_sensors[..2].copy_from_slice(&sensor_locs);
             let mut res = None;
             for (id, i) in sensor_locs.iter().enumerate() {
                 let l = self.sensor_down(*i, id, foreground);
@@ -319,19 +334,41 @@ impl Player {
                 }
             }
         }
-        let color = if self.p_speed { 0xFF0000FF } else { 0xFFFFFFFF };
-        for i in 0..self.p_meter {
-            into.pixel(vec2(16 + i, 16)).map(|c| *c = color);
-            into.pixel(vec2(16 + i, 17)).map(|c| *c = color);
-        }
-        if self.angle == 2 {
-            into.pixel(vec2(16, 8)).map(|c| *c = 0xFF0000FF);
+
+        if self.debug_enabled {
+            for (pos,i) in into.pixels() {
+                let pos = pos + camera;
+                let block_offset = pos & 15;
+                if block_offset.x == 0 || block_offset.y == 0 {
+                    *i &= 0x7FFFFFFF;
+                }
+            }
+            let color = if self.p_speed { 0xFF0000FF } else { 0xFFFFFFFF };
+            for i in 0..self.p_meter {
+                for y in 0..4 {
+                    into.pixel(vec2(16 + i, 16 + y)).map(|c| *c = color);
+                }
+            }
+            for i in 0..16 {
+                let color = match self.angle {
+                    -2 => 0xFF0000,
+                    -1 => 0xFF8080,
+                     0 => 0xFFFFFF,
+                     1 => 0x8080FF,
+                     2 => 0x0000FF,
+                     _ => unreachable!()
+                };
+                into.pixel(vec2(16 + i%4, 8 + i/4)).map(|c| *c = 0xFF000000 + color);
+                if self.data.on_ground {
+                    into.pixel(vec2(20 + i%4, 8 + i/4)).map(|c| *c = 0xFFFFFFFF);
+                }
+            }
+            into.pixel(self.data.pos / 256 - camera).map(|c| *c = 0xFF0000FF);
+            for i in self.debug_sensors.iter() {
+                into.pixel(*i - camera).map(|c| *c = 0xFFFF0000);
+            }
         }
         /*
-        into.pixel(self.data.pos / 256 - camera).map(|c| *c = 0xFF0000FF);
-        for i in self.debug_sensors.iter() {
-            into.pixel(*i - camera).map(|c| *c = 0xFFFF0000);
-        }
         for x in -Self::HITBOX.x / 2 ..= Self::HITBOX.x / 2 {
             for y in -Self::HITBOX.y ..= 0 {
                 if let Some(px) = into.pixel(pos + vec2(x, y) + offset) {

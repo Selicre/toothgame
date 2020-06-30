@@ -43,8 +43,10 @@ impl Foreground {
             0x52 => Semisolid,
             0x46 => SlopeSteep(false),
             0x47 => SlopeSteep(true),
-            0x56 => SlopeAssist,
-            0x57 => SlopeAssist,
+            0x56 => SlopeAssist { direction: false, steep: true  },
+            0x57 => SlopeAssist { direction: true,  steep: true  },
+            0x66 => SlopeAssist { direction: false, steep: false },
+            0x74 => SlopeAssist { direction: true,  steep: false },
             0x64 => SlopeLow(false),
             0x65 => SlopeHigh(false),
             0x75 => SlopeHigh(true),
@@ -84,6 +86,9 @@ pub enum Solidity {
     SlopeHigh(bool),
     SlopeLow(bool),
     SlopeSteep(bool),
-    SlopeAssist,
+    SlopeAssist {
+        direction: bool,
+        steep: bool
+    },
 }
 
