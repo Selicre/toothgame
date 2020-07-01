@@ -51,6 +51,8 @@ impl Foreground {
             0x65 => SlopeHigh(false),
             0x75 => SlopeHigh(true),
             0x76 => SlopeLow(true),
+            0x5D ..= 0x5F => Semisolid,
+            0x6D ..= 0x6F => NonSolid,
             _ => Solid
         }
         //if c == 0 { NonSolid } else { Solid }

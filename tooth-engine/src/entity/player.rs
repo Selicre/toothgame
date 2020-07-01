@@ -8,6 +8,7 @@ use crate::controller::Buttons;
 pub struct Player {
     data: EntityData,
     anim_timer: i32,
+    coyote_time: i32,
     p_meter: i32,
     p_speed: bool,
     angle: i32,
@@ -34,6 +35,7 @@ impl Player {
         Player {
             data: EntityData::new(),
             anim_timer: 0,
+            coyote_time: 4,     // Time when you can still jump off the ground. WIP
             p_meter: 0,
             p_speed: false,
             angle: 0,
@@ -80,9 +82,24 @@ impl Player {
             Slab if sensor_loc.y % 16 > 7 => {
                 return Some(block_y + 7 * 256);
             }
-            SlopeAssist { direction: v, steep } if if v { self.data.vel.x < 0 } else { self.data.vel.x > 0 } => {
+            SlopeAssist { direction: v, steep } /*if if v { self.data.vel.x < 0 } else { self.data.vel.x > 0 }*/ => {
+                let inside_tile = sensor_loc % 16;
                 self.angle = if v { 1 } else { -1 } * if steep { 2 } else { 1 };
-                return Some(block_y - 2 * 256);
+                let px = -2; /*if steep {
+                    if v {
+                        inside_tile.x - 1
+                    } else {
+                        15 - inside_tile.x
+                    }
+                } else {
+                    if v {
+                        inside_tile.x/2 + 7
+                    } else {
+                        14 - inside_tile.x/2
+                    }
+                } - 16;*/
+
+                return Some(block_y + px * 256);
             }
             SlopeSteep(v) if v ^ (sensor_id != 0) => {
                 let inside_tile = sensor_loc % 16;
@@ -101,12 +118,12 @@ impl Player {
             SlopeLow(v) if v ^ (sensor_id != 0) => {
                 let inside_tile = sensor_loc % 16;
                 if v {
-                    if inside_tile.y >= inside_tile.x/2 + 7 {
+                    if inside_tile.y >= inside_tile.x/2 + 7 || (self.data.on_ground && self.data.vel.y >= 0) {
                         self.angle = 1;
                         return Some(block_y + (inside_tile.x/2 + 7) * 256);
                     }
                 } else {
-                    if inside_tile.y >= 14 - inside_tile.x/2 {
+                    if inside_tile.y >= 14 - inside_tile.x/2 || (self.data.on_ground && self.data.vel.y >= 0) {
                         self.angle = -1;
                         return Some(block_y + (14 - inside_tile.x/2) * 256);
                     }
@@ -115,12 +132,12 @@ impl Player {
             SlopeHigh(v) if v ^ (sensor_id != 0) => {
                 let inside_tile = sensor_loc % 16;
                 if v {
-                    if inside_tile.y >= inside_tile.x/2 - 1 {
+                    if inside_tile.y >= inside_tile.x/2 - 1 || (self.data.on_ground && self.data.vel.y >= 0) {
                         self.angle = 1;
                         return Some(block_y + (inside_tile.x/2 - 1) * 256);
                     }
                 } else {
-                    if inside_tile.y >= 6 - inside_tile.x/2 {
+                    if inside_tile.y >= 6 - inside_tile.x/2 || (self.data.on_ground && self.data.vel.y >= 0) {
                         self.angle = -1;
                         return Some(block_y + (6 - inside_tile.x/2) * 256);
                     }
@@ -179,6 +196,7 @@ impl Player {
                 let lift = 0x500 + ((data.vel.x.abs() / 0x80) * 10 / 4) * 0x10;
                 data.vel.y = -lift + 0x30;
                 data.on_ground = false;
+                self.coyote_time = 0;
             } else {
                 if data.vel.y >= 0 {
                     data.vel.y = 0;
@@ -240,16 +258,17 @@ impl Player {
                 next_pos.y -= data.vel.x;
             }*/
             next_pos.y += (data.vel.x/2) * self.angle;
+            if self.angle != 0 { next_pos.y += 256; }  // HACK: this improves sticking to slopes
         }
         let next_pos_x = vec2(next_pos.x, data.pos.y);
         if data.vel.x >= 0 {
-            use Solidity::*;
             // Collide with right wall
             let sensor_locs = [
                 (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y)),
                 (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y / 2)),
                 (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, 0))
             ];
+            self.debug_sensors[2..].copy_from_slice(&sensor_locs);
             let mut res = None;
             for i in sensor_locs.iter() {
                 let l = self.sensor_side(*i, foreground, true);
@@ -260,17 +279,17 @@ impl Player {
                 next_pos.x = c
             }
         } else {
-            use Solidity::*;
             // Collide with left wall
             let sensor_locs = [
                 (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y)),
                 (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y / 2)),
                 (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, 0))
             ];
+            self.debug_sensors[2..].copy_from_slice(&sensor_locs);
             let mut res = None;
             for i in sensor_locs.iter() {
                 let l = self.sensor_side(*i, foreground, false);
-                res = clamp_opt(l, res, false);
+                res = clamp_opt(l, res, true);
             }
             if let Some(c) = res {
                 self.data.vel.x = 0;
@@ -295,12 +314,12 @@ impl Player {
                 next_pos.y = c
             }
         } else {
-            use Solidity::*;
             // Collide with ceiling
             let sensor_locs = [
                 (next_pos_y / 256 + vec2(-Self::HITBOX.x / 2, -Self::HITBOX.y - 1)),
                 (next_pos_y / 256 + vec2( Self::HITBOX.x / 2, -Self::HITBOX.y - 1))
             ];
+            self.debug_sensors[..2].copy_from_slice(&sensor_locs);
             let mut res = None;
             for i in sensor_locs.iter() {
                 let l = self.sensor_up(*i, foreground);
@@ -327,7 +346,7 @@ impl Player {
         for x in 0..16 {
             let pos_x = if !self.data.hflip { x } else { 15 - x };
             for y in 0..32 {
-                if let Some(px) = into.pixel(pos + vec2(x, y + 1)) {
+                if let Some(px) = into.pixel(pos + vec2(x, y + 2)) {
                     let offset = if y >= 16 { 3 * 256 + frame * 256 } else { 0 * 256 + frame * 256 };
                     let p = pal[data[(pos_x as i32 + (y % 16) * 16) as usize + offset] as usize];
                     if p != 0 { *px = p; }
