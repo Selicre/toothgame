@@ -82,9 +82,9 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 let x = params >> 4;
                 let params = i.next().unwrap();
                 let height = params & 0x0F;
-                let has_top = params >> 4 != 0;
-                let has_bottom = params >> 5 != 0;
-                let is_left = params >> 6 != 0;
+                let has_top = (params >> 4) & 1 != 0;
+                let has_bottom = (params >> 5) & 1 != 0;
+                let is_left = (params >> 6) & 1 != 0;
                 let (top, mid, bot) = if is_left {
                     (0x51, 0x61, 0x55)
                 } else {
@@ -106,9 +106,9 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 let x = params >> 4;
                 let params = i.next().unwrap();
                 let height = params & 0x0F;
-                let is_left = (params >> 4) & 0x01 != 0;
+                let is_up = (params >> 4) & 0x01 != 0;
                 let is_filled = (params >> 5) & 0x01 != 0;
-                if is_left {
+                if is_up {
                     buf[x as usize + (y as usize) * 256 + offset] = 0x66;
                     for i in 0..height {
                         for j in 0..3 {
@@ -150,10 +150,26 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 let x = params >> 4;
                 let params = i.next().unwrap();
                 let height = params & 0x0F;
-                let is_left = params >> 4;
+                let is_up = (params >> 4) & 0x01 != 0;
+                let is_filled = (params >> 5) & 0x01 != 0;
                 for i in 0..height {
                     for j in 0..2 {
-                        buf[x as usize + (i) as usize + (y as usize + i as usize + j as usize) * 256 + offset] = 0x47 + j * 0x10;
+                        if is_up {
+                            buf[x as usize + (i) as usize + (y as usize - i as usize + j as usize) * 256 + offset] = 0x46 + j * 0x10;
+                        } else {
+                            buf[x as usize + (i) as usize + (y as usize + i as usize + j as usize) * 256 + offset] = 0x47 + j * 0x10;
+                        }
+                    }
+                    if is_filled {
+                        if is_up {
+                            for j in 0..i {
+                                buf[x as usize + (i) as usize + (y as usize - j as usize + 1) * 256 + offset] = 0x62;
+                            }
+                        } else {
+                            for j in i+1..height {
+                                buf[x as usize + (i) as usize + (y as usize + j as usize + 1) * 256 + offset] = 0x62;
+                            }
+                        }
                     }
                 }
             },
@@ -198,6 +214,25 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                     }
                 }
             },
+            0x0A => {   // Semisolid
+                let params = i.next().unwrap();
+                let y = params & 0x0F;
+                let x = params >> 4;
+                let params = i.next().unwrap();
+                let height = (params & 0x0F) + 1;   // min width = 2
+                let width = (params >> 4) + 1;
+                for ry in 0..=height {
+                    for rx in 0..=width {
+                        let block = if ry == 0 { 0x50 } else { 0x60 } | match rx {
+                            0 => 0x0D,
+                            c if c == width => 0x0F,
+                            _ => 0x0E
+                        };
+                        buf[x as usize + rx as usize + (y as usize + ry as usize)*256 + offset] = block;
+                    }
+                }
+
+            }
             _ => unreachable!()
         }
     }

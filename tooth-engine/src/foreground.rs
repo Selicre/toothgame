@@ -22,14 +22,14 @@ impl Foreground {
         &mut self.blocks
     }
     pub fn block_at_mut(&mut self, mut at: Vec2<i32>) -> &mut u8 {
-        at.x = at.x.max(0).min(256);
-        at.y = at.y.max(0).min(256);
-        &mut self.blocks[at.y as usize * 256 + at.x as usize]
+        at.x = at.x.max(0).min(255);
+        at.y = at.y.max(0).min(255);
+        &mut self.blocks[(at.y * 256 + at.x) as usize]
     }
     pub fn block_at(&self, mut at: Vec2<i32>) -> u8 {
-        at.x = at.x.max(0).min(256);
-        at.y = at.y.max(0).min(256);
-        self.blocks[at.y as usize * 256 + at.x as usize]
+        at.x = at.x.max(0).min(255);
+        at.y = at.y.max(0).min(255);
+        self.blocks[(at.y * 256 + at.x) as usize]
     }
     pub fn solidity_at(&self, at: Vec2<i32>) -> Solidity {
         use Solidity::*;
@@ -40,7 +40,7 @@ impl Foreground {
             0x04 => Semisolid,
             0x05 => HurtTop,
             0x49 => Slab,
-            0x52 => Semisolid,
+            0x52 => EjectUp,
             0x46 => SlopeSteep(false),
             0x47 => SlopeSteep(true),
             0x56 => SlopeAssist { direction: false, steep: true  },
@@ -83,6 +83,7 @@ pub enum Solidity {
     Solid,
     Coin,
     Semisolid,
+    EjectUp,
     HurtTop,
     Slab,
     SlopeHigh(bool),

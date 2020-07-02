@@ -71,6 +71,10 @@ impl Player {
                 self.angle = 0;
                 return Some(block_y - 1 * 256);
             }
+            EjectUp => {
+                self.angle = 0;
+                return Some(block_y - 1 * 256);
+            },
             Semisolid if self.data.pos.y <= block_y => {
                 self.angle = 0;
                 return Some(block_y - 1 * 256);
@@ -85,20 +89,7 @@ impl Player {
             SlopeAssist { direction: v, steep } /*if if v { self.data.vel.x < 0 } else { self.data.vel.x > 0 }*/ => {
                 let inside_tile = sensor_loc % 16;
                 self.angle = if v { 1 } else { -1 } * if steep { 2 } else { 1 };
-                let px = -2; /*if steep {
-                    if v {
-                        inside_tile.x - 1
-                    } else {
-                        15 - inside_tile.x
-                    }
-                } else {
-                    if v {
-                        inside_tile.x/2 + 7
-                    } else {
-                        14 - inside_tile.x/2
-                    }
-                } - 16;*/
-
+                let px = -2;
                 return Some(block_y + px * 256);
             }
             SlopeSteep(v) if v ^ (sensor_id != 0) => {
@@ -169,12 +160,14 @@ impl Player {
         };
         match sensor {
             Solid | HurtTop => {
-                self.p_speed = false;
                 return Some(loc_clamp);
             }
             Slab if sensor_loc.y % 16 > 7 => {
-                self.p_speed = false;
                 return Some(loc_clamp);
+            }
+            SlopeSteep(v) if v != is_right => {
+                // not sure if this is necessary, but I think this can reduce some jank.
+                self.angle = 2 * if v { 1 } else { -1 };
             }
             _ => {}
         }
@@ -182,6 +175,18 @@ impl Player {
     }
     pub fn run(&mut self, buttons: Buttons, data: &[Option<Entity>], foreground: &mut Foreground) {
         let data = &mut self.data;
+        if buttons.b() {
+            let speed = if buttons.c() {
+                0x8000
+            } else {
+                0x0400
+            };
+            if buttons.left()  { data.pos.x -= speed; }
+            if buttons.right() { data.pos.x += speed; }
+            if buttons.up()    { data.pos.y -= speed; }
+            if buttons.down()  { data.pos.y += speed; }
+            return;
+        }
         self.debug_enabled ^= buttons.c_edge();
         if !data.on_ground {
             if buttons.a() {
@@ -245,28 +250,19 @@ impl Player {
             }
             if data.vel.x == 0 {
                 self.anim_timer = 0x9FF;
-                data.frame = 2;
+                data.frame = 0;
             }
         } else {
             data.frame = 1;
         }
-        let mut next_pos = data.pos + data.vel;
-        if data.on_ground {
-            /*if self.angle == 2 {
-                next_pos.y += data.vel.x;
-            } else if self.angle == -2 {
-                next_pos.y -= data.vel.x;
-            }*/
-            next_pos.y += (data.vel.x/2) * self.angle;
-            if self.angle != 0 { next_pos.y += 256; }  // HACK: this improves sticking to slopes
-        }
-        let next_pos_x = vec2(next_pos.x, data.pos.y);
-        if data.vel.x >= 0 {
+        // Apply horizontal momentum
+        let mut next_pos = vec2(self.data.pos.x + self.data.vel.x, self.data.pos.y);
+        if self.data.vel.x >= 0 {
             // Collide with right wall
             let sensor_locs = [
-                (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y)),
-                (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y / 2)),
-                (next_pos_x / 256 + vec2(Self::HITBOX.x / 2 + 1, 0))
+                (next_pos / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y)),
+                (next_pos / 256 + vec2(Self::HITBOX.x / 2 + 1, -Self::HITBOX.y / 2)),
+                (next_pos / 256 + vec2(Self::HITBOX.x / 2 + 1, 0))
             ];
             self.debug_sensors[2..].copy_from_slice(&sensor_locs);
             let mut res = None;
@@ -275,15 +271,16 @@ impl Player {
                 res = clamp_opt(l, res, false);
             }
             if let Some(c) = res {
+                self.p_speed = false;
                 self.data.vel.x = 0;
                 next_pos.x = c
             }
         } else {
             // Collide with left wall
             let sensor_locs = [
-                (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y)),
-                (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y / 2)),
-                (next_pos_x / 256 + vec2(-Self::HITBOX.x / 2 - 1, 0))
+                (next_pos / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y)),
+                (next_pos / 256 + vec2(-Self::HITBOX.x / 2 - 1, -Self::HITBOX.y / 2)),
+                (next_pos / 256 + vec2(-Self::HITBOX.x / 2 - 1, 0))
             ];
             self.debug_sensors[2..].copy_from_slice(&sensor_locs);
             let mut res = None;
@@ -292,16 +289,24 @@ impl Player {
                 res = clamp_opt(l, res, true);
             }
             if let Some(c) = res {
+                self.p_speed = false;
                 self.data.vel.x = 0;
                 next_pos.x = c
             }
         }
-        let next_pos_y = next_pos;
+        self.data.pos = next_pos;
+
+        let mut next_pos = vec2(self.data.pos.x, self.data.pos.y + self.data.vel.y);
+        if self.data.on_ground {
+            // If on the ground, shift self
+            next_pos.y += (self.data.vel.x/2) * self.angle;
+            if self.angle != 0 { next_pos.y += 256; }  // HACK: this improves sticking to slopes
+        }
         if self.data.vel.y >= 0 {
             // Collide with ground
             let sensor_locs = [
-                (next_pos_y / 256 + vec2(-Self::HITBOX.x / 2, 1)),
-                (next_pos_y / 256 + vec2( Self::HITBOX.x / 2, 1))
+                (next_pos / 256 + vec2(-Self::HITBOX.x / 2, 1)),
+                (next_pos / 256 + vec2( Self::HITBOX.x / 2, 1))
             ];
             self.debug_sensors[..2].copy_from_slice(&sensor_locs);
             let mut res = None;
@@ -316,8 +321,8 @@ impl Player {
         } else {
             // Collide with ceiling
             let sensor_locs = [
-                (next_pos_y / 256 + vec2(-Self::HITBOX.x / 2, -Self::HITBOX.y - 1)),
-                (next_pos_y / 256 + vec2( Self::HITBOX.x / 2, -Self::HITBOX.y - 1))
+                (next_pos / 256 + vec2(-Self::HITBOX.x / 2, -Self::HITBOX.y - 1)),
+                (next_pos / 256 + vec2( Self::HITBOX.x / 2, -Self::HITBOX.y - 1))
             ];
             self.debug_sensors[..2].copy_from_slice(&sensor_locs);
             let mut res = None;
@@ -330,8 +335,8 @@ impl Player {
                 self.data.vel.y = 0;
             }
         }
-        next_pos.x = next_pos.x.max(Self::HITBOX.x / 2 * 256);
         self.data.pos = next_pos;
+        self.data.pos.x = self.data.pos.x.max(Self::HITBOX.x / 2 * 256);
     }
     pub fn render(&self, camera: Vec2<i32>, into: &mut Framebuffer) {
         use crate::graphics::TOOTHPASTE;

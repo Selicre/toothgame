@@ -97,7 +97,8 @@ try {
 					return;
 				}
 				deadline = ts + 15;
-				test.innerHTML = "Frame " + frame + "\n";
+				test.innerHTML = "To jump, press Z (left+right on mobile)\n";
+				test.innerHTML += "Frame " + frame + "\n";
 				test.innerHTML += "Frametime " + (ts - ts_old).toFixed(2) + "ms\n";
 				ts_old = ts;
 				frame += 1;
@@ -106,6 +107,7 @@ try {
 							| (keys.ArrowUp ? 4 : 0)
 							| (keys.ArrowDown ? 8 : 0)
 							| (keys.Space ? 16 : 0)
+							| (keys.KeyA ? 32 : 0)
 							| (keys.KeyZ ? 32 : 0)
 							| (keys.KeyX ? 64 : 0)
 							| (keys.KeyC ? 128 : 0)
