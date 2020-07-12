@@ -5,24 +5,29 @@ use crate::controller::Buttons;
 use crate::vec2::{Vec2, vec2};
 use crate::foreground::Foreground;
 use crate::background::Background;
-use crate::entity::EntitySet;
+use crate::entity::{Entity, EntityData, EntityKind, EntitySet};
 use crate::terrain;
 
-pub struct State {
-    camera: Vec2<i32>,
-    level_size: Vec2<i32>,
-    foreground: Foreground,
-    background: Background,
-    entity_set: EntitySet,
-    fadein_timer: i32,
+pub struct LevelState {
+    pub camera: Vec2<i32>,
+    pub level_size: Vec2<i32>,
+    pub foreground: Foreground,
+    pub background: Background,
+    pub entity_set: EntitySet,
+    pub fadein_timer: i32,
+    pub buttons: Buttons
 }
 
-impl State {
+impl LevelState {
     pub fn new() -> Self {
         use crate::graphics;
         let mut background = Background::new();
         let mut foreground = Foreground::new();
         let mut entity_set = EntitySet::new();
+        entity_set.list[0] = Some(Entity {
+            kind: EntityKind::Star,
+            data: EntityData::new()
+        });
         entity_set.player.set_pos(vec2(1480, 60));
         terrain::decode_chunk(vec2(0, 0), foreground.blocks_mut(), &[0x00, 0x2C, 0x01, 0xA7, 0x51, 0x01, 0xA5, 0x52, 0x01, 0xF7, 0x12]);
         terrain::decode_chunk(vec2(16, 0), foreground.blocks_mut(), &[
@@ -66,13 +71,14 @@ impl State {
             0x6D, 0x6E, 0x6F, 0x6D, 0x6F,
             0x6D, 0x6E, 0x6F, 0x6D, 0x6F*/
         ]);
-        State {
+        LevelState {
             camera: vec2(0,60),
             level_size: vec2(2048, 256),
             foreground,
             background,
             entity_set,
-            fadein_timer: 0
+            fadein_timer: 0,
+            buttons: Buttons::new()
         }
     }
     pub fn run(&mut self, fb: &mut Framebuffer, buttons: Buttons) -> Option<GameState> {
@@ -81,7 +87,9 @@ impl State {
         if buttons.right() { self.camera.x += speed; }
         if buttons.up()    { self.camera.y -= speed; }
         if buttons.down()  { self.camera.y += speed; }*/
-        self.entity_set.run(buttons, &mut self.foreground);
+        self.buttons = buttons;
+        let self_ptr = self as *mut _;
+        self.entity_set.run(self_ptr);
 
         let camera_target = self.entity_set.player.pos() - vec2(320 / 2, 180 / 2 + 16);
         //self.camera = (self.camera + camera_target) / 2;

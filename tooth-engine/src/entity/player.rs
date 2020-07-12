@@ -4,6 +4,7 @@ use crate::vec2::{vec2, Vec2};
 use crate::foreground::Foreground;
 use crate::foreground::Solidity;
 use crate::controller::Buttons;
+use crate::state::level::LevelState;
 
 pub struct Player {
     data: EntityData,
@@ -173,7 +174,8 @@ impl Player {
         }
         None
     }
-    pub fn run(&mut self, buttons: Buttons, data: &[Option<Entity>], foreground: &mut Foreground) {
+    pub fn run(&mut self, data: &[Option<Entity>], parent: *mut LevelState) {
+        project!(parent.{foreground, buttons});
         let data = &mut self.data;
         if buttons.b() {
             let speed = if buttons.c() {

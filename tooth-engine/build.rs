@@ -34,6 +34,8 @@ fn main() {
     embed_fg(&dune_fg, &mut data, &mut pal).write(&mut f, "DUNE_FG");
     let img = image::open("assets/sprites/toothpaste.png").unwrap().into_rgba();
     embed_fg(&img, &mut data, &mut pal).write(&mut f, "TOOTHPASTE");
+    let img = image::open("assets/sprites/misc.png").unwrap().into_rgba();
+    embed_fg(&img, &mut data, &mut pal).write(&mut f, "MISC");
 
     let comp = lz4::block::compress(&data, lz4::block::CompressionMode::HIGHCOMPRESSION(12).into(), false).unwrap();
 

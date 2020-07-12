@@ -9,13 +9,13 @@ pub mod level;
 pub static mut STATE: Option<GameState> = None;
 
 pub enum GameState {
-    Level(level::State)
+    Level(level::LevelState)
 }
 
 impl GameState {
     pub fn new() -> Self {
         graphics::init();
-        GameState::Level(level::State::new())
+        GameState::Level(level::LevelState::new())
     }
     pub fn run(&mut self, fb: &mut Framebuffer, buttons: Buttons) {
         let out = match self {

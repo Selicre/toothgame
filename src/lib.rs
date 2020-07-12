@@ -29,6 +29,10 @@ pub unsafe fn drw(buttons: u32) {
 pub static mut SND: [f32; 1024] = [0.0; 1024];
 
 #[no_mangle]
-pub unsafe fn snd() {
-
+pub unsafe fn snd(a: usize) -> usize {
+    let test: [fn(_) -> _; 2] = [
+        |a| a + 1,
+        |b| b * 2
+    ];
+    test[a](a)
 }

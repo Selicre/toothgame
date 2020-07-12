@@ -33,3 +33,12 @@ buttons! {
     6, B, b, b_edge;
     7, C, c, c_edge;
 }
+
+impl Buttons {
+    pub fn new() -> Self {
+        Buttons {
+            current: 0,
+            old: 0
+        }
+    }
+}
