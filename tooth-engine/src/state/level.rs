@@ -5,7 +5,7 @@ use crate::controller::Buttons;
 use crate::vec2::{Vec2, vec2};
 use crate::foreground::Foreground;
 use crate::background::Background;
-use crate::entity::{Entity, EntityData, EntityKind, EntitySet};
+use crate::entity::{self, EntitySet};
 use crate::terrain;
 
 pub struct LevelState {
@@ -24,11 +24,10 @@ impl LevelState {
         let mut background = Background::new();
         let mut foreground = Foreground::new();
         let mut entity_set = EntitySet::new();
-        entity_set.list[0] = Some(Entity {
-            kind: EntityKind::Star,
-            data: EntityData::new()
-        });
-        entity_set.player.set_pos(vec2(1480, 60));
+        entity_set.spawn(entity::star(vec2(1480, 60) * 256));
+        entity_set.spawn(entity::key(vec2(1024, 96) * 256));
+        entity_set.spawn(entity::lock(vec2(1640, 206) * 256));
+        entity_set.player.set_pos(vec2(1480, 60) * 256);
         terrain::decode_chunk(vec2(0, 0), foreground.blocks_mut(), &[0x00, 0x2C, 0x01, 0xA7, 0x51, 0x01, 0xA5, 0x52, 0x01, 0xF7, 0x12]);
         terrain::decode_chunk(vec2(16, 0), foreground.blocks_mut(), &[
             0x01, 0x0B, 0x51, 0x01, 0x1A, 0x41, 0x01, 0x29, 0x31,
@@ -64,7 +63,11 @@ impl LevelState {
             0x6D, 0x6E, 0x6F, 0x6D, 0x6F*/
         ]);
         terrain::decode_chunk(vec2(6 * 16, 0), foreground.blocks_mut(), &[
-            0x02, 0xF0, 0xF1,
+            0x02, 0x6B, 0x31,
+            0x03, 0x63, 0x57,
+        ]);
+        terrain::decode_chunk(vec2(7 * 16, 0), foreground.blocks_mut(), &[
+            0x02, 0xF0, 0xE1,
             /*0x08, 0xFA, 0x43,
             0x00, 0x00, 0x00, 0x5D, 0x5F,
             0x5D, 0x5E, 0x5F, 0x6D, 0x6F,
@@ -91,7 +94,7 @@ impl LevelState {
         let self_ptr = self as *mut _;
         self.entity_set.run(self_ptr);
 
-        let camera_target = self.entity_set.player.pos() - vec2(320 / 2, 180 / 2 + 16);
+        let camera_target = self.entity_set.player.pos() / 256 - vec2(320 / 2, 180 / 2 + 16);
         //self.camera = (self.camera + camera_target) / 2;
 
         if camera_target.x - 0x10 > self.camera.x {
@@ -115,7 +118,7 @@ impl LevelState {
 
         if self.fadein_timer < 320 {
             self.fadein_timer += 8;
-            let center = self.entity_set.player.pos() - self.camera - vec2(0, 24);
+            let center = self.entity_set.player.pos() / 256 - self.camera - vec2(0, 24);
             for (pos,px) in fb.pixels() {
                 let dist = pos - center;
                 if dist.x*dist.x + dist.y*dist.y > self.fadein_timer*self.fadein_timer {
