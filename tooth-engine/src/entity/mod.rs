@@ -56,6 +56,7 @@ pub fn star(pos: Vec2<i32>) -> Entity {
     data.pos = pos;
     data.vel = vec2(256, 0);
     data.frame = 2;
+    data.hitbox = vec2(12, 12);
     Entity {
         kind: EntityKind::Star { time_left: 60 * 10 },
         data
@@ -105,7 +106,6 @@ impl Entity {
                 } else {
                     self.data.frame = 0xFF;
                 }
-                self.data.hitbox = vec2(12, 12);
                 self.data.process_collision(foreground);
                 if self.data.blocked_by[0] {
                     //self.data.vel.y = 4096;
@@ -221,7 +221,7 @@ impl EntitySet {
         }
     }
     pub fn run(&mut self, parent: *mut LevelState) {
-        for (i,c) in self.list.iter_mut().enumerate() {
+        for (_i,c) in self.list.iter_mut().enumerate() {
             if let Some(x) = c {
                 let remove = x.run(parent);
                 if remove { *c = None; }

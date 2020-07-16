@@ -1,20 +1,20 @@
 use crate::framebuffer::Framebuffer;
 use crate::vec2::{vec2, Vec2};
+use crate::graphics::{self, DataDef};
 
 pub struct Background {
-    gfx_id: usize
+    gfx: DataDef
 }
 
 impl Background {
     pub const fn new() -> Background {
         Background {
-            gfx_id: 0
+            gfx: graphics::DUNE_BG
         }
     }
     pub fn render(&self, camera: Vec2<i32>, into: &mut Framebuffer) {
-        use crate::graphics;
-        let data = graphics::DUNE_BG.get_data();
-        let pal = graphics::DUNE_BG.get_pal();
+        let data = self.gfx.get_data();
+        let pal = self.gfx.get_pal();
         let camera = vec2(camera.x / 4, -52);
         for (pos,i) in into.pixels() {
             let mut pos = pos + camera;

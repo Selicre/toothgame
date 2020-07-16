@@ -1,8 +1,6 @@
 use crate::vec2::Vec2;
 use core::slice::Iter;
 
-type Func = for<'a, 'b> fn(&mut Iter<'a, u8>, &'b mut [u8]);
-
 pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
     let mut i = src.iter().cloned();
     let offset = pos.x + pos.y * 256;

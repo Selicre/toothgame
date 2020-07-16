@@ -15,12 +15,8 @@ pub struct Player {
     angle: i32,
     debug_enabled: bool,
     debug_sensors: [Vec2<i32>; 5],
-    debug_lines: [i32;2],
 }
 
-enum Direction {
-    Up, Down, Left, Right
-}
 impl Player {
     pub const HITBOX: Vec2<i32> = vec2(10, 24);
     pub const SPRITE_SIZE: Vec2<i32> = vec2(16, 32);
@@ -36,7 +32,6 @@ impl Player {
             angle: 0,
             debug_enabled: false,
             debug_sensors: [vec2(0,0); 5],
-            debug_lines: [0; 2]
         }
     }
     pub fn pos(&self) -> Vec2<i32> {

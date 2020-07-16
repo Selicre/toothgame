@@ -1,21 +1,21 @@
 use crate::framebuffer::Framebuffer;
 use crate::vec2::Vec2;
+use crate::graphics::{self, DataDef};
 
 pub struct Foreground {
     blocks: [u8; 65536],
-    gfx_id: usize
+    gfx: DataDef
 }
 
 impl Foreground {
     pub const fn new() -> Foreground {
         Foreground {
             blocks: [0; 65536],
-            gfx_id: 0
+            gfx: graphics::DUNE_FG
         }
     }
     fn fg_block(&self, tile: usize) -> &[u8] {
-        use crate::graphics;
-        let data = graphics::DUNE_FG.get_data();
+        let data = self.gfx.get_data();
         &data[tile * 256 .. tile * 256 + 256]
     }
     pub fn blocks_mut(&mut self) -> &mut [u8] {

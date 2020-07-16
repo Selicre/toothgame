@@ -22,7 +22,7 @@ impl EntityData {
     pub fn sensor_down(&mut self, sensor_loc: Vec2<i32>, sensor_id: usize, foreground: &mut Foreground) -> Option<i32> {
         use Solidity::*;
         let sensor = self.collide(sensor_loc, foreground);
-        let block_y = (sensor_loc.y * 256 & 0x7FFFF000);
+        let block_y = sensor_loc.y * 256 & 0x7FFFF000;
         match sensor {
             Solid => {
                 self.angle = 0;
@@ -44,7 +44,6 @@ impl EntityData {
                 return Some(block_y + 7 * 256);
             }
             SlopeAssist { direction: v, steep } /*if if v { self.vel.x < 0 } else { self.vel.x > 0 }*/ => {
-                let inside_tile = sensor_loc % 16;
                 self.angle = if v { 1 } else { -1 } * if steep { 2 } else { 1 };
                 let px = -2;
                 return Some(block_y + px * 256);
@@ -109,7 +108,7 @@ impl EntityData {
     pub fn sensor_side(&mut self, sensor_loc: Vec2<i32>, foreground: &mut Foreground, is_right: bool) -> Option<i32> {
         use Solidity::*;
         let sensor = self.collide(sensor_loc, foreground);
-        let loc = (sensor_loc.x * 256 & 0x7FFFF000);
+        let loc = sensor_loc.x * 256 & 0x7FFFF000;
         let loc_clamp = if is_right {
             loc + (-1 - self.hitbox.x / 2) * 256
         } else {
@@ -147,7 +146,7 @@ impl EntityData {
         ];
         let is_right = self.vel.x >= 0;
         let mut res = None;
-        for (idx, i) in sensor_locs.iter().enumerate() {
+        for (_idx, i) in sensor_locs.iter().enumerate() {
             let l = self.sensor_side(*i, foreground, is_right);
             res = clamp_opt(l, res, false);
         }

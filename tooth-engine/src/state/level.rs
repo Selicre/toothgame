@@ -21,7 +21,7 @@ pub struct LevelState {
 impl LevelState {
     pub fn new() -> Self {
         use crate::graphics;
-        let mut background = Background::new();
+        let background = Background::new();
         let mut foreground = Foreground::new();
         let mut entity_set = EntitySet::new();
         entity_set.spawn(entity::star(vec2(1480, 60) * 256));
