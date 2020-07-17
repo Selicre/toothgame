@@ -43,7 +43,7 @@ impl Player {
     pub fn run(&mut self, parent: *mut LevelState) {
         project!(parent.{foreground, buttons, entity_set});
         let data = &mut self.data;
-        /*if buttons.b() {
+        if cfg!(feature = "debug") && buttons.start() {
             let speed = if buttons.c() {
                 0x8000
             } else {
@@ -54,8 +54,8 @@ impl Player {
             if buttons.up()    { data.pos.y -= speed; }
             if buttons.down()  { data.pos.y += speed; }
             return;
-        }*/
-        if buttons.b_edge() {
+        }
+        if cfg!(feature = "debug") && buttons.b_edge() {
             use crate::entity::star;
             entity_set.spawn(star(data.pos));
         }
@@ -151,7 +151,7 @@ impl Player {
             }
         }
 
-        if self.debug_enabled {
+        if cfg!(feature = "debug") && self.debug_enabled {
             for (pos,i) in into.pixels() {
                 let pos = pos + camera;
                 let block_offset = pos & 15;
@@ -184,18 +184,5 @@ impl Player {
                 into.pixel(*i - camera).map(|c| *c = 0xFFFF0000);
             }
         }
-        /*
-        for x in -Self::HITBOX.x / 2 ..= Self::HITBOX.x / 2 {
-            for y in -Self::HITBOX.y ..= 0 {
-                if let Some(px) = into.pixel(pos + vec2(x, y) + offset) {
-                    let [r,g,b,a] = px.to_ne_bytes();
-                    let r = r.saturating_sub(0x50);
-                    let g = g.saturating_sub(0x50);
-                    let b = b.saturating_sub(0x50);
-                    *px = u32::from_ne_bytes([r,g,b,a]);
-                }
-            }
-        }
-        */
     }
 }

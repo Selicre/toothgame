@@ -36,6 +36,8 @@ fn main() {
     embed_fg(&img, &mut data, &mut pal).write(&mut f, "TOOTHPASTE");
     let img = image::open("assets/sprites/misc.png").unwrap().into_rgba();
     embed_fg(&img, &mut data, &mut pal).write(&mut f, "MISC");
+    let img = image::open("assets/font/boldface.png").unwrap().into_rgba();
+    embed_font(&img, &mut data).write(&mut f, "BOLDFACE");
 
     let comp = lz4::block::compress(&data, lz4::block::CompressionMode::HIGHCOMPRESSION(12).into(), false).unwrap();
 
@@ -93,6 +95,22 @@ fn embed_fg(image: &image::RgbaImage, data: &mut Vec<u8>, pal: &mut Vec<u32>) ->
     DataDef {
         offset,
         pal: pal_offset,
+        end: data.len()
+    }
+}
+
+fn embed_font(image: &image::RgbaImage, data: &mut Vec<u8>) -> DataDef {
+    let offset = data.len();
+    for ty in 0..image.height()/8 {
+        for tx in 0..image.width()/8 {
+            data.extend(image.view(tx*8, ty*8, 8, 8).pixels().map(|(_,_,c)| {
+                 (u32::from_le_bytes(c.0) == 0xFF000000) as u8
+            }));
+        }
+    }
+    DataDef {
+        offset,
+        pal: 0,
         end: data.len()
     }
 }

@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["x10A94 <hyperpone@gmail.com>"]
 edition = "2018"
 
+[features]
+debug = ["tooth-engine/debug"]
+
 [lib]
 crate-type = ["cdylib"]
 

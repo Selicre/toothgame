@@ -12,6 +12,10 @@ impl EntityData {
         let sensor = foreground.solidity_at(sensor_loc / 16);
         match sensor {
             Coin => {
+                use crate::state::get;
+                use crate::entity;
+                //let state = unsafe { get() }.unwrap_level();
+                //state.entity_set.spawn(entity::explosion((sensor_loc / 16 * 16 + vec2(8, 14)) * 256));
                 let block = foreground.block_at_mut(sensor_loc / 16);
                 *block = 0;
             },

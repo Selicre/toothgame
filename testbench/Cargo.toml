@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 tooth-engine = { path = "../tooth-engine" }
 image = "0.23"
+glium = "0.27"

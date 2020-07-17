@@ -2,15 +2,18 @@ use crate::framebuffer::Framebuffer;
 use crate::vec2::Vec2;
 use crate::graphics::{self, DataDef};
 
+
+static mut BLOCKS: [u8; 65536] = [0; 65536];
+
 pub struct Foreground {
-    blocks: [u8; 65536],
+    blocks: &'static mut [u8; 65536],
     gfx: DataDef
 }
 
 impl Foreground {
-    pub const fn new() -> Foreground {
+    pub fn new() -> Foreground {
         Foreground {
-            blocks: [0; 65536],
+            blocks: unsafe { &mut BLOCKS },
             gfx: graphics::DUNE_FG
         }
     }
@@ -19,7 +22,7 @@ impl Foreground {
         &data[tile * 256 .. tile * 256 + 256]
     }
     pub fn blocks_mut(&mut self) -> &mut [u8] {
-        &mut self.blocks
+        self.blocks
     }
     pub fn block_at_mut(&mut self, mut at: Vec2<i32>) -> &mut u8 {
         at.x = at.x.max(0).min(255);

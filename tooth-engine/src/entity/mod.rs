@@ -21,6 +21,9 @@ pub enum EntityKind {
     },
     Star {
         time_left: i32
+    },
+    Sign {
+        message: &'static str
     }
 }
 
@@ -50,6 +53,8 @@ impl EntityData {
         }
     }
 }
+
+
 
 pub fn star(pos: Vec2<i32>) -> Entity {
     let mut data = EntityData::new();
@@ -86,6 +91,15 @@ pub fn lock(pos: Vec2<i32>) -> Entity {
     data.frame = 1;
     Entity {
         kind: EntityKind::Lock,
+        data
+    }
+}
+pub fn sign(pos: Vec2<i32>, message: &'static str) -> Entity {
+    let mut data = EntityData::new();
+    data.pos = pos;
+    data.frame = 9;
+    Entity {
+        kind: EntityKind::Sign { message },
         data
     }
 }
@@ -176,11 +190,27 @@ impl Entity {
                 false
             }
             EntityKind::Explosion { ref mut time_left } => {
-                *time_left -= 1;
-                self.data.frame = 8 - (*time_left / 4);
-                *time_left == 0
+                let done = *time_left == 0;
+                if !done {
+                    self.data.frame = 7 - (*time_left / 4);
+                    *time_left -= 1;
+                }
+                done
             }
             EntityKind::Lock => {
+                false
+            }
+            EntityKind::Sign { message } => {
+                project!(parent.{textbox, entity_set});
+                let delta = (entity_set.player.pos() - self.data.pos) / 256;
+                let near = delta.x.abs() < 32 && delta.y.abs() < 32;
+                if near != textbox.is_some() { // positive edge
+                    if near {
+                        *textbox = Some((message, 0));
+                    } else {
+                        *textbox = None
+                    }
+                }
                 false
             }
         }
@@ -194,6 +224,7 @@ impl Entity {
         offset.x /= 2;
         let pos = self.data.pos / 256 - camera - offset;
         let frame = self.data.frame as usize;
+        if frame == 0xFF { return; }
         for x in 0..16 {
             let pos_x = if !self.data.hflip { x } else { 15 - x };
             for y in 0..16 {
@@ -221,7 +252,7 @@ impl EntitySet {
         }
     }
     pub fn run(&mut self, parent: *mut LevelState) {
-        for (_i,c) in self.list.iter_mut().enumerate() {
+        for c in self.list.iter_mut() {
             if let Some(x) = c {
                 let remove = x.run(parent);
                 if remove { *c = None; }
