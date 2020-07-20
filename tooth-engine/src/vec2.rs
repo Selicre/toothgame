@@ -10,10 +10,10 @@ pub struct Vec2<T> {
 
 impl<T> Vec2<T> {
     pub fn map<U>(self, f: impl Fn(T) -> U) -> Vec2<U> {
-        Vec2 {
-            x: f(self.x),
-            y: f(self.y)
-        }
+        vec2(f(self.x), f(self.y))
+    }
+    pub fn zip<U,V>(self, other: Vec2<U>, f: impl Fn(T,U) -> V) -> Vec2<V> {
+        vec2(f(self.x, other.x), f(self.y, other.y))
     }
 }
 
@@ -23,78 +23,49 @@ impl<T> From<[T;2]> for Vec2<T> {
     }
 }
 
-impl<T: ops::Add> ops::Add for Vec2<T> {
-    type Output = Vec2<T::Output>;
-    fn add(self, other: Self) -> Self::Output {
-        Vec2 {
-            x: self.x + other.x,
-            y: self.y + other.y
+macro_rules! impl_ops {
+    ($($norm:ident, $norm_fn:ident; $assign:ident, $assign_fn:ident; [ $op:tt $aop:tt ])+) => {
+        $(
+        impl<T: ops::$norm> ops::$norm for Vec2<T> {
+            type Output = Vec2<T::Output>;
+            fn $norm_fn(self, other: Self) -> Self::Output {
+                vec2(self.x $op other.x, self.y $op other.y)
+            }
         }
-    }
-}
-/*
-impl<T: ops::Add> ops::AddAssign for Vec2<T> {
-    fn add_assign(&mut self, other: Self) {
-        *self = self + other;
-    }
-}*/
-
-impl<T: ops::Sub> ops::Sub for Vec2<T> {
-    type Output = Vec2<T::Output>;
-    fn sub(self, other: Self) -> Self::Output {
-        Vec2 {
-            x: self.x - other.x,
-            y: self.y - other.y
+        impl<T: ops::$norm + Clone> ops::$norm<T> for Vec2<T> {
+            type Output = Vec2<T::Output>;
+            fn $norm_fn(self, other: T) -> Self::Output {
+                vec2(self.x $op other.clone(), self.y $op other)
+            }
         }
-    }
-}
-
-impl<T: ops::Mul + Clone> ops::Mul<T> for Vec2<T> {
-    type Output = Vec2<T::Output>;
-    fn mul(self, other: T) -> Self::Output {
-        Vec2 {
-            x: self.x * other.clone(),
-            y: self.y * other
+        impl<T: ops::$assign> ops::$assign for Vec2<T> {
+            fn $assign_fn(&mut self, other: Self) {
+                self.x $aop other.x;
+                self.y $aop other.y;
+            }
         }
+        impl<T: ops::$assign + Clone> ops::$assign<T> for Vec2<T> {
+            fn $assign_fn(&mut self, other: T) {
+                self.x $aop other.clone();
+                self.y $aop other;
+            }
+        }
+        )+
     }
 }
 
-impl<T: ops::Div + Clone> ops::Div<T> for Vec2<T> {
-    type Output = Vec2<T::Output>;
-    fn div(self, other: T) -> Self::Output {
-        Vec2 {
-            x: self.x / other.clone(),
-            y: self.y / other
-        }
-    }
-}
+impl_ops! {
+    Add, add; AddAssign, add_assign; [ + += ]
+    Sub, sub; SubAssign, sub_assign; [ - -= ]
 
-impl<T: ops::Rem + Clone> ops::Rem<T> for Vec2<T> {
-    type Output = Vec2<T::Output>;
-    fn rem(self, other: T) -> Self::Output {
-        Vec2 {
-            x: self.x % other.clone(),
-            y: self.y % other
-        }
-    }
-}
+    Mul, mul; MulAssign, mul_assign; [ * *= ]
+    Div, div; DivAssign, div_assign; [ / /= ]
+    Rem, rem; RemAssign, rem_assign; [ % %= ]
 
-impl<T: ops::BitAnd + Clone> ops::BitAnd<T> for Vec2<T> {
-    type Output = Vec2<T::Output>;
-    fn bitand(self, other: T) -> Self::Output {
-        Vec2 {
-            x: self.x & other.clone(),
-            y: self.y & other
-        }
-    }
-}
+    Shl, shl; ShlAssign, shl_assign; [ << <<= ]
+    Shr, shr; ShrAssign, shr_assign; [ >> >>= ]
 
-impl<T: ops::BitOr + Clone> ops::BitOr<T> for Vec2<T> {
-    type Output = Vec2<T::Output>;
-    fn bitor(self, other: T) -> Self::Output {
-        Vec2 {
-            x: self.x | other.clone(),
-            y: self.y | other
-        }
-    }
+    BitAnd, bitand; BitAndAssign, bitand_assign; [ & &= ]
+    BitOr,  bitor;  BitOrAssign,  bitor_assign;  [ | |= ]
+    BitXor, bitxor; BitXorAssign, bitxor_assign; [ ^ ^= ]
 }

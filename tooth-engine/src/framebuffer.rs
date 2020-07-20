@@ -15,6 +15,10 @@ impl Framebuffer {
         }
     }
 
+    pub fn size() -> Vec2<i32> {
+        vec2(Self::WIDTH as _, Self::HEIGHT as _)
+    }
+
     pub fn pixels(&mut self) -> impl Iterator<Item=(Vec2<i32>, &mut u32)> {
         self.iter_mut().enumerate().map(|(i,c)| {
             let pos = vec2(i % Self::WIDTH, i / Self::WIDTH)

@@ -30,7 +30,7 @@ impl LevelState {
         entity_set.spawn(entity::star(vec2(1480, 60) * 256));
         entity_set.spawn(entity::key(vec2(1024, 96) * 256));
         entity_set.spawn(entity::lock(vec2(1640, 206) * 256));
-        entity_set.spawn(entity::sign(vec2(472, 190) * 256, "HI! THIS IS A NICE MESSAGE."));
+        entity_set.spawn(entity::sign(vec2(472, 190) * 256, "THIS IS REALLY LARGE TEXT"));
         entity_set.player.set_pos(vec2(472, 60) * 256);
         LevelState {
             camera: vec2(0,60),
@@ -48,7 +48,7 @@ impl LevelState {
         let self_ptr = self as *mut _;
         self.entity_set.run(self_ptr);
 
-        let camera_target = self.entity_set.player.pos() / 256 - vec2(320 / 2, 180 / 2 + 16);
+        let camera_target = self.entity_set.player.pos() / 256 - Framebuffer::size() / 2 + vec2(0, 16);
 
         if camera_target.x - 0x10 > self.camera.x {
             self.camera.x = camera_target.x - 0x10;
@@ -61,9 +61,10 @@ impl LevelState {
             self.camera.y = camera_target.y + 0x10;
         }
 
-        self.camera = self.camera.map(|c| c.max(0));
-        self.camera.x = self.camera.x.min(self.level_size.x - 320);
-        self.camera.y = self.camera.y.min(self.level_size.y - 180);
+        self.camera = self.camera.zip(
+            self.level_size - Framebuffer::size(),
+            |c,m| c.max(0).min(m)
+        );
 
         self.background.render(self.camera, fb);
         self.foreground.render(self.camera, fb);
@@ -71,12 +72,14 @@ impl LevelState {
 
         if let Some((msg, ref mut timer)) = self.textbox {
             use crate::graphics::{self, DUNE_FG, BOLDFACE};
-            let data = BOLDFACE.get_data();
-            let start = (Framebuffer::WIDTH as i32 / 2) - (msg.len() as i32 * 4);
-            let end = (Framebuffer::WIDTH as i32 / 2) + (msg.len() as i32 * 4);
-            for i in start-8..end+8 {
-                for j in 24..48 {
-                    *fb.pixel(vec2(i,j)).unwrap() = if i == start-8 || i == end+7 || j == 24 || j == 47 {
+            let hstart = (Framebuffer::WIDTH as i32 / 2) - (msg.len() as i32 * 4);
+            let hend = (Framebuffer::WIDTH as i32 / 2) + (msg.len() as i32 * 4);
+
+            let vstart = (36 - *timer).max(24);
+            let vend = (36 + *timer).min(48);
+            for i in hstart-8..hend+8 {
+                for j in vstart..vend {
+                    *fb.pixel(vec2(i,j)).unwrap() = if i == hstart-8 || i == hend+7 || j == vstart || j == vend-1 {
                         //0xFF83212c
                         DUNE_FG.get_pal()[5]
                     } else if ((i + *timer / 2) / 16) % 2 != ((j + *timer / 2) / 16) % 2 {
@@ -88,7 +91,7 @@ impl LevelState {
                     };
                 }
             }
-            let mut position = vec2(start, 32);
+            let mut position = vec2(hstart, 32);
             /*for (_i,c) in (0..*timer).zip(msg.bytes()) {
                 let offset = (c as usize - 0x20) * 64;
                 for i in 0..64 {
@@ -100,7 +103,7 @@ impl LevelState {
                 }
                 position = position + vec2(8,0);
             }*/
-            graphics::draw_text(fb, &mut vec2(start, 32), &msg.as_bytes()[..(*timer as usize).min(msg.len())]);
+            graphics::draw_text(fb, &mut position, &msg.as_bytes()[..(*timer as usize).min(msg.len())]);
             *timer += 1;
         }
         let mut target = *b"POS 00000 00000";
@@ -111,7 +114,7 @@ impl LevelState {
 
         graphics::draw_text(fb, &mut vec2(8, 8), &target[..]);
 
-        if self.fadein_timer < 320 {
+        if self.fadein_timer < Framebuffer::size().x.max(Framebuffer::size().y) {
             self.fadein_timer += 8;
             let center = self.entity_set.player.pos() / 256 - self.camera - vec2(0, 24);
             for (pos,px) in fb.pixels() {
