@@ -23,7 +23,12 @@ pub enum EntityKind {
         time_left: i32
     },
     Sign {
-        message: &'static str
+        message: &'static [u8],
+        active: bool
+    },
+    Tomato {
+        dead: bool,
+        timer: i32
     }
 }
 
@@ -94,12 +99,23 @@ pub fn lock(pos: Vec2<i32>) -> Entity {
         data
     }
 }
-pub fn sign(pos: Vec2<i32>, message: &'static str) -> Entity {
+pub fn sign(pos: Vec2<i32>, message: &'static [u8]) -> Entity {
     let mut data = EntityData::new();
     data.pos = pos;
     data.frame = 9;
     Entity {
-        kind: EntityKind::Sign { message },
+        kind: EntityKind::Sign { message, active: false },
+        data
+    }
+}
+pub fn tomato(pos: Vec2<i32>) -> Entity {
+    let mut data = EntityData::new();
+    data.pos = pos;
+    data.frame = 12;
+    data.vel = vec2(256, 0);
+    data.hitbox = vec2(8, 8);
+    Entity {
+        kind: EntityKind::Tomato { dead: false, timer: 0 },
         data
     }
 }
@@ -200,18 +216,48 @@ impl Entity {
             EntityKind::Lock => {
                 false
             }
-            EntityKind::Sign { message } => {
-                project!(parent.{textbox, entity_set});
+            EntityKind::Sign { message, ref mut active } => {
+                project!(parent.{hud, entity_set});
                 let delta = (entity_set.player.pos() - self.data.pos) / 256;
                 let near = delta.x.abs() < 32 && delta.y.abs() < 32;
-                if near != textbox.is_some() { // positive edge
+                if near != *active { // positive edge
+                    *active = near;
                     if near {
-                        *textbox = Some((message, 0));
+                        hud.show_textbox(message);
                     } else {
-                        *textbox = None
+                        hud.hide_textbox();
                     }
                 }
                 false
+            }
+            EntityKind::Tomato { ref mut timer, ref mut dead } => {
+                project!(parent.{entity_set, foreground});
+                self.data.vel.y += 0x30;
+                self.data.process_collision(foreground);
+                if *dead {
+                    self.data.frame = 14;
+                    *timer -= 1;
+                    *timer == 0
+                } else {
+                    if self.data.blocked_by[2] {
+                        self.data.vel.x = 256;
+                        self.data.hflip = false;
+                    }
+                    if self.data.blocked_by[3] {
+                        self.data.vel.x = -256;
+                        self.data.hflip = true;
+                    }
+                    let delta = (entity_set.player.pos() - self.data.pos) / 256;
+                    if entity_set.player.data_mut().vel.y > self.data.vel.y && delta.x.abs() < 8 && delta.y.abs() < 8 {
+                        *dead = true;
+                        *timer = 40;
+                        self.data.vel.x = 0;
+                        entity_set.player.data_mut().vel.y = -1536;
+                    }
+                    self.data.frame = 12 + *timer / 8 % 2;
+                    *timer += 1;
+                    false
+                }
             }
         }
     }

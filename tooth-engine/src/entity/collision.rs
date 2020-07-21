@@ -14,8 +14,9 @@ impl EntityData {
             Coin => {
                 use crate::state::get;
                 use crate::entity;
-                //let state = unsafe { get() }.unwrap_level();
-                //state.entity_set.spawn(entity::explosion((sensor_loc / 16 * 16 + vec2(8, 14)) * 256));
+                let state = unsafe { get() }.unwrap_level();
+                state.entity_set.spawn(entity::explosion((sensor_loc / 16 * 16 + vec2(8, 14)) * 256));
+                state.data.coins += 1;
                 let block = foreground.block_at_mut(sensor_loc / 16);
                 *block = 0;
             },

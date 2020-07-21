@@ -40,6 +40,9 @@ impl Player {
     pub fn set_pos(&mut self, pos: Vec2<i32>) {
         self.data.pos = pos;
     }
+    pub fn data_mut(&mut self) -> &mut EntityData {
+        &mut self.data
+    }
     pub fn run(&mut self, parent: *mut LevelState) {
         project!(parent.{foreground, buttons, entity_set});
         let data = &mut self.data;
@@ -56,8 +59,8 @@ impl Player {
             return;
         }
         if cfg!(feature = "debug") && buttons.b_edge() {
-            use crate::entity::star;
-            entity_set.spawn(star(data.pos));
+            use crate::entity::tomato;
+            entity_set.spawn(tomato(data.pos));
         }
         self.debug_enabled ^= buttons.c_edge();
         if !data.on_ground {

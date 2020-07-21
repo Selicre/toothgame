@@ -9,15 +9,24 @@ use crate::entity::{self, EntitySet};
 use crate::terrain;
 use crate::graphics;
 
+pub mod hud;
+
 pub struct LevelState {
     pub camera: Vec2<i32>,
-    pub level_size: Vec2<i32>,
     pub foreground: Foreground,
     pub background: Background,
     pub entity_set: EntitySet,
-    pub fadein_timer: i32,
-    pub textbox: Option<(&'static str, i32)>,
+    pub data: LevelData,
+    pub hud: hud::Hud,
     pub buttons: Buttons
+}
+
+pub struct LevelData {
+    pub level_size: Vec2<i32>,
+    pub fadein_timer: i32,
+    pub coins: i32,
+    pub score: i32,
+    pub timer: Option<i32>
 }
 
 impl LevelState {
@@ -30,16 +39,23 @@ impl LevelState {
         entity_set.spawn(entity::star(vec2(1480, 60) * 256));
         entity_set.spawn(entity::key(vec2(1024, 96) * 256));
         entity_set.spawn(entity::lock(vec2(1640, 206) * 256));
-        entity_set.spawn(entity::sign(vec2(472, 190) * 256, "THIS IS REALLY LARGE TEXT"));
+        entity_set.spawn(entity::sign(vec2(472, 190) * 256, b"THIS IS REALLY LARGE TEXT,YOU\nHAVE TO WRAP IT"));
+        entity_set.spawn(entity::sign(vec2(1024, 120) * 256, b"THIS IS GIANT TEXT.\nBIG.\nTREMENDOUS.\nFANTASTIC.\nMANY LINES."));
+        entity_set.spawn(entity::tomato(vec2(400, 60) * 256));
         entity_set.player.set_pos(vec2(472, 60) * 256);
         LevelState {
             camera: vec2(0,60),
-            level_size: vec2(2048, 256),
+            data: LevelData {
+                level_size: vec2(2048, 256),
+                fadein_timer: 0,
+                coins: 0,
+                score: 0,
+                timer: Some(0)
+            },
             foreground,
             background,
             entity_set,
-            fadein_timer: 0,
-            textbox: None,
+            hud: hud::Hud::new(),
             buttons: Buttons::new()
         }
     }
@@ -62,7 +78,7 @@ impl LevelState {
         }
 
         self.camera = self.camera.zip(
-            self.level_size - Framebuffer::size(),
+            self.data.level_size - Framebuffer::size(),
             |c,m| c.max(0).min(m)
         );
 
@@ -70,56 +86,23 @@ impl LevelState {
         self.foreground.render(self.camera, fb);
         self.entity_set.render(self.camera, fb);
 
-        if let Some((msg, ref mut timer)) = self.textbox {
-            use crate::graphics::{self, DUNE_FG, BOLDFACE};
-            let hstart = (Framebuffer::WIDTH as i32 / 2) - (msg.len() as i32 * 4);
-            let hend = (Framebuffer::WIDTH as i32 / 2) + (msg.len() as i32 * 4);
+        self.hud.render(fb, self_ptr);
 
-            let vstart = (36 - *timer).max(24);
-            let vend = (36 + *timer).min(48);
-            for i in hstart-8..hend+8 {
-                for j in vstart..vend {
-                    *fb.pixel(vec2(i,j)).unwrap() = if i == hstart-8 || i == hend+7 || j == vstart || j == vend-1 {
-                        //0xFF83212c
-                        DUNE_FG.get_pal()[5]
-                    } else if ((i + *timer / 2) / 16) % 2 != ((j + *timer / 2) / 16) % 2 {
-                        //0xFFcc2b32
-                        DUNE_FG.get_pal()[2]
-                    } else {
-                        //0xFFd04a61
-                        DUNE_FG.get_pal()[3]
-                    };
-                }
-            }
-            let mut position = vec2(hstart, 32);
-            /*for (_i,c) in (0..*timer).zip(msg.bytes()) {
-                let offset = (c as usize - 0x20) * 64;
-                for i in 0..64 {
-                    let pixel = data[offset + i];
-                    if pixel == 1 {
-                        *fb.pixel(position + vec2(i as i32 % 8 + 1,i as i32 / 8 + 1)).unwrap() = 0xFF888888;
-                        *fb.pixel(position + vec2(i as i32 % 8,i as i32 / 8)).unwrap() = 0xFFFFFFFF;
-                    }
-                }
-                position = position + vec2(8,0);
-            }*/
-            graphics::draw_text(fb, &mut position, &msg.as_bytes()[..(*timer as usize).min(msg.len())]);
-            *timer += 1;
-        }
-        let mut target = *b"POS 00000 00000";
+
+        /*let mut target = *b"POS 00000 00000";
 
         let pos = self.entity_set.player.pos();
         hex_format(pos.x/16, &mut target[4..9], 5);
         hex_format(pos.y/16, &mut target[10..15], 5);
 
-        graphics::draw_text(fb, &mut vec2(8, 8), &target[..]);
+        graphics::draw_text(fb, &mut vec2(8, 8), &target[..]);*/
 
-        if self.fadein_timer < Framebuffer::size().x.max(Framebuffer::size().y) {
-            self.fadein_timer += 8;
+        if self.data.fadein_timer < Framebuffer::size().x.max(Framebuffer::size().y) {
+            self.data.fadein_timer += 8;
             let center = self.entity_set.player.pos() / 256 - self.camera - vec2(0, 24);
             for (pos,px) in fb.pixels() {
                 let dist = pos - center;
-                if dist.x*dist.x + dist.y*dist.y > self.fadein_timer*self.fadein_timer {
+                if dist.x*dist.x + dist.y*dist.y > self.data.fadein_timer*self.data.fadein_timer {
                     *px = 0xFF000000;
                 }
             }
