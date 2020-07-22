@@ -1,24 +1,61 @@
 use crate::vec2::Vec2;
 use core::slice::Iter;
+
+pub fn decode_land(buf: &mut [u8], src: &[u8]) {
+    let mut iter = src.iter();
+    while iter.as_slice().len() != 0 {
+        let x = *iter.next().unwrap();
+        let y = *iter.next().unwrap();
+        let params = *iter.next().unwrap();
+        let mut h = params & 0x0F;
+        let mut w = params >> 4;
+        if w == 0 { w = *iter.next().unwrap(); }
+        if h == 0 { h = *iter.next().unwrap(); }
+        let b = *iter.next().unwrap();
+        for i in x..x+w {
+            for j in y..y+h {
+                buf[i as usize + j as usize * 256] = b;
+            }
+        }
+    }
+
+    for y in 0u8..=255 {
+        for x in 0u8..=255 {
+            let top =    buf[x as usize + y.saturating_sub(1) as usize * 256] != 0;
+            let bottom = buf[x as usize + y.saturating_add(1) as usize * 256] != 0;
+            let left =   buf[x.saturating_sub(1) as usize + y as usize * 256] != 0;
+            let right =  buf[x.saturating_add(1) as usize + y as usize * 256] != 0;
+
+            let this = &mut buf[x as usize + y as usize * 256];
+
+            if *this == 0x62 {
+                let bh = [0, 1, 3, 2][((top as usize) << 1) + bottom as usize] + 4;
+                let bl = [0, 1, 3, 2][((left as usize) << 1) + right as usize];
+                let b = (bh << 4) + bl;
+                *this = b;
+            } else if *this == 0x00 {
+                if top && left {
+                    buf[(x as usize - 1) + (y as usize - 1) * 256] = 0x44;
+                }
+                if top && right {
+                    buf[(x as usize + 1) + (y as usize - 1) * 256] = 0x45;
+                }
+                if bottom && left {
+                    buf[(x as usize - 1) + (y as usize + 1) * 256] = 0x54;
+                }
+                if bottom && right {
+                    buf[(x as usize + 1) + (y as usize + 1) * 256] = 0x55;
+                }
+            }
+        }
+    }
+}
+
 pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
     let mut i = src.iter().cloned();
     let offset = pos.x + pos.y * 256;
     while let Some(id) = i.next() {
         match id {
-            0 => {  // Horizontal stretch of land
-                let params = i.next().unwrap();
-                let height = params & 0x0F;
-                let width = params >> 4;
-                for x in 0..width*16 {
-                    for y in height..16 {
-                        buf[x as usize + y as usize*256 + offset] = if y == height {
-                            0x52
-                        } else {
-                            0x62
-                        };
-                    }
-                }
-            },
             1 => {  // row of blocks
                 let params = i.next().unwrap();
                 let y = params & 0x0F;
@@ -39,62 +76,6 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 let height = params >> 4;
                 for y in y..y+height {
                     buf[x as usize + y as usize*256 + offset] = block;
-                }
-            },
-            3 => {  // rectangle of land; 0-indexed
-                let params = i.next().unwrap();
-                let y = params & 0x0F;
-                let x = params >> 4;
-                let params = i.next().unwrap();
-                let height = params & 0x0F;
-                let width = params >> 4;
-                for rx in 0..=width {
-                    for ry in 0..=height {
-                        let block_low = if width == 0 {
-                            0
-                        } else if rx == 0 {
-                            1
-                        } else if rx == width {
-                            3
-                        } else {
-                            2
-                        };
-                        let block_high = if height == 0 {
-                            0
-                        } else if ry == 0 {
-                            1
-                        } else if ry == height {
-                            3
-                        } else {
-                            2
-                        } + 4;
-                        let block = (block_high << 4) | block_low;
-                        buf[x as usize + rx as usize + (y as usize + ry as usize)*256 + offset] = block;
-                    }
-                }
-            },
-            4 => {  // land wall
-                let params = i.next().unwrap();
-                let y = params & 0x0F;
-                let x = params >> 4;
-                let params = i.next().unwrap();
-                let height = params & 0x0F;
-                let has_top = (params >> 4) & 1 != 0;
-                let has_bottom = (params >> 5) & 1 != 0;
-                let is_left = (params >> 6) & 1 != 0;
-                let (top, mid, bot) = if is_left {
-                    (0x51, 0x61, 0x55)
-                } else {
-                    (0x53, 0x63, 0x54)
-                };
-                if has_top {
-                    buf[x as usize + (y as usize - 1) * 256 + offset] = top;
-                }
-                for i in 0..height {
-                    buf[x as usize + (y as usize + i as usize) * 256 + offset] = mid;
-                }
-                if has_bottom {
-                    buf[x as usize + (y as usize + height as usize) * 256 + offset] = bot;
                 }
             },
             5 => {  // land gentle slope
@@ -170,19 +151,6 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                     }
                 }
             },
-            7 => {  // inner land
-                let params = i.next().unwrap();
-                let y = params & 0x0F;
-                let x = params >> 4;
-                let params = i.next().unwrap();
-                let height = params & 0x0F;
-                let width = params >> 4;
-                for rx in 0..=width {
-                    for ry in 0..=height {
-                        buf[x as usize + rx as usize + (y as usize + ry as usize)*256 + offset] = 0x62;
-                    }
-                }
-            },
             8 => {  // uncompressed block sequence
                 let params = i.next().unwrap();
                 let y = params & 0x0F;
@@ -193,20 +161,6 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 for ry in 0..=height {
                     for rx in 0..=width {
                         let block = i.next().unwrap();
-                        buf[x as usize + rx as usize + (y as usize + ry as usize)*256 + offset] = block;
-                    }
-                }
-            },
-            9 => {  // land rectangle
-                let params = i.next().unwrap();
-                let y = params & 0x0F;
-                let x = params >> 4;
-                let params = i.next().unwrap();
-                let height = params & 0x0F;
-                let width = params >> 4;
-                for ry in 0..=height {
-                    for rx in 0..=width {
-                        let block = if ry == 0 { 0x52 } else { 0x62 };
                         buf[x as usize + rx as usize + (y as usize + ry as usize)*256 + offset] = block;
                     }
                 }
@@ -230,7 +184,7 @@ pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
                 }
 
             }
-            _ => unreachable!()
+            _ => {}
         }
     }
 }

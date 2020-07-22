@@ -16,8 +16,7 @@ impl Hud {
         }
     }
     pub fn render(&mut self, fb: &mut Framebuffer, parent: *mut LevelState) {
-        project!(parent.data);
-        self.textbox.render(fb);
+        project!(parent.{data, entity_set});
         let mut position = self.position;
         graphics::draw_text(fb, &mut position, b"SCORE     COINS  TIME\n");
         let mut buf = [b' '; 15];
@@ -36,7 +35,18 @@ impl Hud {
             position -= vec2(4, 0);
             graphics::draw_text(fb, &mut position, &buf[..2]);
         }
+        if cfg!(feature = "debug") {
+            position.x = 16;
+            position.y += 16;
+            let mut target = *b"POS 000000 000000";
 
+            let pos = entity_set.player.pos();
+            hex_format(pos.x, &mut target[4..10], false);
+            hex_format(pos.y, &mut target[11..17], false);
+
+            graphics::draw_text(fb, &mut position, &target[..]);
+        }
+        self.textbox.render(fb);
     }
     #[inline(always)]   // to make sure the const fn gets inlined
     pub fn show_textbox(&mut self, msg: &'static [u8]) {
@@ -114,6 +124,19 @@ fn dec_format(mut num: i32, target: &mut [u8], zero_pad: bool) {
     for i in (0..target.len()).rev() {
         target[i] = (num % 10) as u8 + b'0';
         num /= 10;
+        if !zero_pad && num == 0 { break; }
+    }
+}
+
+fn hex_format(mut num: i32, target: &mut [u8], zero_pad: bool) {
+    for i in (0..target.len()).rev() {
+        let ch = (num & 15) as u8;
+        target[i] = ch + if ch > 9 {
+            b'A' - 10
+        } else {
+            b'0'
+        };
+        num >>= 4;
         if !zero_pad && num == 0 { break; }
     }
 }

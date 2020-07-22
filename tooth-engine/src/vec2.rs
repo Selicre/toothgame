@@ -17,6 +17,12 @@ impl<T> Vec2<T> {
     }
 }
 
+impl Vec2<i32> {
+    pub fn product_range(self, other: Vec2<i32>) -> impl Iterator<Item=Self> {
+        (self.x..other.x).flat_map(move |x| (self.y..other.y).map(move |y| vec2(x,y)))
+    }
+}
+
 impl<T> From<[T;2]> for Vec2<T> {
     fn from([x,y]: [T;2]) -> Self {
         Self { x, y }
