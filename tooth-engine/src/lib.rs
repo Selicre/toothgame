@@ -27,3 +27,4 @@ pub mod terrain;
 pub mod state;
 pub mod entity;
 pub mod lz4;
+pub mod rand;

@@ -47,3 +47,13 @@ impl ops::DerefMut for Framebuffer {
         &mut self.inner
     }
 }
+
+pub trait Surface {
+    fn pixel(&mut self, position: Vec2<i32>) -> Option<&mut u32>;
+}
+
+impl Surface for Framebuffer {
+    fn pixel(&mut self, position: Vec2<i32>) -> Option<&mut u32> {
+        Framebuffer::pixel(self, position)
+    }
+}

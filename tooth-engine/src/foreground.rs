@@ -56,25 +56,29 @@ impl Foreground {
             0x76 => SlopeLow(true),
             0x5D ..= 0x5F => Semisolid,
             0x6D ..= 0x6F => NonSolid,
+            0x80 ..= 0xFF => NonSolid,
             _ => Solid
         }
         //if c == 0 { NonSolid } else { Solid }
     }
-    pub fn render(&self, camera: Vec2<i32>, into: &mut Framebuffer) {
+    pub fn sample_pixel(&self, pos: Vec2<i32>) -> Option<u32> {
         use crate::graphics;
         let pal = graphics::DUNE_FG.get_pal();
 
+        let block_pos = pos.map(|c| c >> 4);
+        let block_offset = pos & 15;
+        let offset_addr = (block_offset.x + block_offset.y * 16) as usize;
+        let block_addr = (block_pos.x + block_pos.y * 256) as usize;
+        let block_id = *self.blocks.get(block_addr)?;
+        //let block_id = self.block_at(block_pos);
+
+        pal.get(*self.fg_block(block_id as usize).get(offset_addr)? as usize).copied()
+    }
+    pub fn render(&self, camera: Vec2<i32>, into: &mut Framebuffer) {
         // TODO: copy rows of 16 pixels at a time?
         for (pos,i) in into.pixels() {
             let pos = pos + camera;
-            let block_pos = pos.map(|c| c >> 4);
-            let block_offset = pos & 15;
-            let offset_addr = (block_offset.x + block_offset.y * 16) as usize;
-            let block_addr = (block_pos.x + block_pos.y * 256) as usize;
-            let block_id = self.blocks[block_addr];
-            //let block_id = self.block_at(block_pos);
-
-            let px = pal[self.fg_block(block_id as usize)[offset_addr] as usize];
+            let px = self.sample_pixel(pos).unwrap();
             if px != 0 { *i = px; }
         }
     }

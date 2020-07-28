@@ -1,6 +1,6 @@
 use crate::lz4;
 use crate::vec2::{vec2, Vec2};
-use crate::framebuffer::Framebuffer;
+use crate::framebuffer::Surface;
 
 pub struct DataDef {
     pub offset: usize,
@@ -21,7 +21,7 @@ pub fn init() {
     unsafe { lz4::decompress(&GFX_DATA_LZ4, &mut GFX_DATA) };
 }
 
-pub fn draw_text(fb: &mut Framebuffer, position: &mut Vec2<i32>, msg: &[u8]) {
+pub fn draw_text<S: Surface>(fb: &mut S, position: &mut Vec2<i32>, msg: &[u8]) {
     let data = BOLDFACE.get_data();
     let init_x = position.x;
     for c in msg.iter() {

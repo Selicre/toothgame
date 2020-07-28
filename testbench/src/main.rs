@@ -109,6 +109,9 @@ fn main() {
             let fb8 = fb.as_ptr() as *const u8;
             std::slice::from_raw_parts(fb8, fb.len() * 4)
         };
+        /*image::ImageBuffer::<image::Rgba<u8>,_>::from_raw(320, 180, data).map(|c| {
+            c.save(&format!("frame{}.png", current_frame));
+        });*/
         let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&data, (320, 180));
         let opengl_texture = glium::texture::SrgbTexture2d::new(&display, image).unwrap();
         let mut target = display.draw();
@@ -121,5 +124,6 @@ fn main() {
         target.clear_color(0.0, 0.0, 0.0, 0.0);
         target.draw(&vertex_buffer, &index_buffer, &program, &uniforms, &Default::default()).unwrap();
         target.finish().unwrap();
+        current_frame += 1;
     })
 }
