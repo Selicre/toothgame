@@ -42,6 +42,7 @@ impl Foreground {
             0x02 => Coin,
             0x04 => Semisolid,
             0x05 => HurtTop,
+            0x06 => Semisolid,
             0x49 => Slab,
             0x52 => EjectUp,
             0x46 => SlopeSteep(false),

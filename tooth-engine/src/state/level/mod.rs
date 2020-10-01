@@ -37,16 +37,16 @@ impl LevelState {
         decomp_level(&mut foreground);
         let mut entity_set = EntitySet::new();
         //entity_set.spawn(entity::star(vec2(1480, 60) * 256));
-        entity_set.spawn(entity::key(vec2(0x288, 0x3F) * 256));
-        entity_set.spawn(entity::lock(vec2(1640, 206) * 256));
-        entity_set.spawn(entity::sign(vec2(472, 191) * 256, b"THIS IS REALLY LARGE TEXT,YOU\nHAVE TO WRAP IT"));
-        entity_set.spawn(entity::sign(vec2(0x2F7, 0xDF) * 256, b"THIS IS GIANT TEXT.\nBIG.\nTREMENDOUS.\nFANTASTIC.\nMANY LINES."));
-        entity_set.spawn(entity::tomato(vec2(400, 60) * 256));
-        entity_set.player.set_pos(vec2(0x68, 0xBF) * 256);
+        entity_set.spawn(entity::key(vec2(0x288, 0x23F) * 256));
+        entity_set.spawn(entity::lock(vec2(1640, 0x2CE) * 256));
+        entity_set.spawn(entity::sign(vec2(472, 0x2BF) * 256, b"THIS IS REALLY LARGE TEXT,YOU\nHAVE TO WRAP IT"));
+        entity_set.spawn(entity::sign(vec2(0x2F7, 0x2DF) * 256, b"THIS IS GIANT TEXT.\nBIG.\nTREMENDOUS.\nFANTASTIC.\nMANY LINES."));
+        //entity_set.spawn(entity::tomato(vec2(400, 60) * 256));
+        entity_set.player.set_pos(vec2(0x68, 0x2BF) * 256);
         LevelState {
             camera: vec2(0,60),
             data: LevelData {
-                level_size: vec2(2048, 256),
+                level_size: vec2(4096, 2048),
                 fadein_timer: 0,
                 coins: 0,
                 score: 0,

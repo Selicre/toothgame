@@ -165,7 +165,7 @@ impl Player {
             let color = if self.p_speed { 0xFF0000FF } else { 0xFFFFFFFF };
             for i in 0..self.p_meter {
                 for y in 0..4 {
-                    into.pixel(vec2(16 + i, 16 + y)).map(|c| *c = color);
+                    into.pixel(vec2(16 + i, 180 - 16 + y)).map(|c| *c = color);
                 }
             }
             for i in 0..16 {
@@ -177,9 +177,9 @@ impl Player {
                      2 => 0x0000FF,
                      _ => unreachable!()
                 };
-                into.pixel(vec2(16 + i%4, 8 + i/4)).map(|c| *c = 0xFF000000 + color);
+                into.pixel(vec2(16 + i%4, 180-24 + i/4)).map(|c| *c = 0xFF000000 + color);
                 if self.data.on_ground {
-                    into.pixel(vec2(20 + i%4, 8 + i/4)).map(|c| *c = 0xFFFFFFFF);
+                    into.pixel(vec2(20 + i%4, 180-24 + i/4)).map(|c| *c = 0xFFFFFFFF);
                 }
             }
             into.pixel(self.data.pos / 256 - camera).map(|c| *c = 0xFF0000FF);

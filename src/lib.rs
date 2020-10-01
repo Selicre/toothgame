@@ -30,5 +30,5 @@ pub static mut SND: [f32; 1024] = [0.0; 1024];
 
 #[no_mangle]
 pub unsafe fn snd() {
-    //SND.copy_from_slice(&[0.0; 1024]);
+    SND.copy_from_slice(&[0.0; 1024]);
 }

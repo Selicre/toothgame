@@ -5,14 +5,16 @@ use crate::graphics::{self, DUNE_FG, BOLDFACE};
 
 pub struct Hud {
     textbox: Textbox,
-    position: Vec2<i32>
+    position: Vec2<i32>,
+    temp: i32,
 }
 
 impl Hud {
     pub fn new() -> Self {
         Self {
             textbox: Textbox::empty(),
-            position: vec2(16, 8)
+            position: vec2(16, 8),
+            temp: 0
         }
     }
     pub fn render(&mut self, fb: &mut Framebuffer, parent: *mut LevelState) {
@@ -34,6 +36,14 @@ impl Hud {
             dec_format(seconds, &mut buf[..2], true);
             position -= vec2(4, 0);
             graphics::draw_text(fb, &mut position, &buf[..2]);
+        }
+        if data.coins == 48 && self.temp == 0 {
+            self.temp = data.timer.unwrap();
+        }
+        if self.temp != 0 {
+            dec_format(self.temp, &mut buf[..5], true);
+            position = vec2(128, 32);
+            graphics::draw_text(fb, &mut position, &buf[..5]);
         }
         if cfg!(feature = "debug") {
             position.x = 16;

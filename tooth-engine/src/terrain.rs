@@ -8,42 +8,34 @@ pub fn decode_area(buf: &mut [u8], mut src: &[u8]) {
     decode_land(buf, &src[..len]);
     src = &src[len..];
     while src.len() != 0 {
-        let loc = src[0] as usize;
-        let len = src[1] as usize;
-        let x = loc >> 4;
-        let y = loc & 0x0F;
-        let loc = vec2(x, y) * 16;
-        src = &src[2..];
-        decode_chunk(loc, buf, &src[..len]);
-        src = &src[len..];
+        let old = src;
+        decode_object(buf, &mut src);
     }
 }
 
 pub fn decode_land_chunk(src: &mut &[u8]) -> [u8; 5] {
-    let x = src[0];
-    let y = src[1];
-    let params = src[2];
-    let mut h = params & 0x0F;
-    let mut w = params >> 4;
-    let mut cur = 3;
-    if w == 0 {
-        w = src[cur];
-        cur += 1;
-    };
-    if h == 0 {
-        h = src[cur];
-        cur += 1;
-    };
-    let b = src[cur];
-    *src = &src[cur+1..];
-    [x,y,w,h,b]
+    let mut buf = [0; 5];
+    buf.copy_from_slice(&src[..5]);
+    *src = &src[5..];
+    buf
 }
 
 
 pub fn decode_land(buf: &mut [u8], mut src: &[u8]) {
+    decode_land_with(buf, core::iter::from_fn(|| {
+        if src.len() != 0 {
+            Some(decode_land_chunk(&mut src))
+        } else {
+            None
+        }
+    }));
+}
+
+pub fn decode_land_with(buf: &mut [u8], mut src: impl Iterator<Item=[u8;5]>) {
     let mut rand = RandState::new(0);
-    while src.len() != 0 {
-        let [x,y,w,h,b] = decode_land_chunk(&mut src);
+    //while src.len() != 0 {
+    //    let [x,y,w,h,b] = decode_land_chunk(&mut src);
+    while let Some([x,y,w,h,b]) = src.next() {
         for i in x..x+w {
             for j in y..y+h {
                 buf[i as usize + j as usize * 256] = b;
@@ -89,21 +81,14 @@ pub fn decode_land(buf: &mut [u8], mut src: &[u8]) {
     }
 }
 
-pub fn decode_chunk(pos: Vec2<usize>, buf: &mut [u8], src: &[u8]) {
-    let mut i = src.iter().cloned();
-    let offset = pos.x + pos.y * 256;
-    while let Some(id) = i.next() {
-        decode_object(id, &mut buf[offset..], &mut i);
-    }
-}
-
-pub fn decode_object(id: u8, buf: &mut [u8], i: &mut impl Iterator<Item=u8>) {
-    let params = i.next().unwrap();
-    let y = params & 0x0F;
-    let x = params >> 4;
-    let params = i.next().unwrap();
+pub fn decode_object(buf: &mut [u8], i: &mut &[u8]) {
+    let id = i[0];
+    let y = i[1];
+    let x = i[2];
+    let params = i[3];
     let b = params & 0x0F;
     let a = params >> 4;
+    *i = &i[4..];
     match id {
         1 => {  // row of blocks
             let block = b;
@@ -189,7 +174,8 @@ pub fn decode_object(id: u8, buf: &mut [u8], i: &mut impl Iterator<Item=u8>) {
             let width = a;
             for ry in 0..=height {
                 for rx in 0..=width {
-                    let block = i.next().unwrap();
+                    let block = i[0];
+                    *i = &i[1..];
                     buf[x as usize + rx as usize + (y as usize + ry as usize)*256] = block;
                 }
             }
